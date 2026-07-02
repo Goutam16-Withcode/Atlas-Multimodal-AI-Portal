@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+<h3>Raw marked.parse() output test</h3>
+<div id="out1"></div>
+<hr>
+<h3>What marked.parse() actually produced (as text, to inspect):</h3>
+<pre id="out2" style="white-space:pre-wrap;background:#eee;padding:10px;"></pre>
+
+<script>
+  const testContent = '<img src="https://placehold.co/300x200" alt="test" class="rounded-lg shadow-lg my-4 max-w-full" data-downloadable="true" data-asset-type="image" />';
+
+  marked.setOptions({ gfm: true, breaks: true });
+
+  const parsed = marked.parse(testContent);
+  document.getElementById('out1').innerHTML = parsed;
+  document.getElementById('out2').textContent = parsed;
+</script>
+</body>
+</html>

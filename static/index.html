@@ -1,0 +1,2648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas AI · Operations Copilot</title>
+
+<!-- Fonts: warm serif for display, clean grotesque for UI, mono for code -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+  :root{
+    /* ---- Atlas / Claude-inspired token system ---- */
+    --bg-main:#F5F2EA;
+    --bg-sidebar:#FAF8F2;
+    --bg-panel:#FFFFFF;
+    --bg-bubble-user:#EDE6D8;
+    --bg-bubble-assistant:transparent;
+    --border-color:rgba(31,27,22,0.09);
+    --border-color-hover:rgba(31,27,22,0.20);
+    --text-main:#28221A;
+    --text-muted:#7C7264;
+
+    --accent-primary:#C2643F;      /* terracotta */
+    --accent-primary-hover:#A8532F;
+    --accent-secondary:#8A7130;    /* muted gold-olive */
+    --accent-gradient:linear-gradient(135deg,#C2643F,#D98456);
+    --accent-glow:rgba(194,100,63,0.16);
+
+    --success:#3D7A55;
+    --danger:#B23B2E;
+    --warning:#9C6B12;
+
+    --sidebar-width:272px;
+    --radius-lg:18px;
+    --radius-md:12px;
+    --radius-sm:8px;
+    --transition-speed:.25s;
+
+    --font-display:'Fraunces', Georgia, serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'Fira Code', monospace;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:var(--font-body);
+    background-color:var(--bg-main);
+    color:var(--text-main);
+    height:100vh;
+    overflow:hidden;
+  }
+
+  ::-webkit-scrollbar{width:7px;height:7px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:rgba(31,27,22,0.14);border-radius:5px;}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(31,27,22,0.24);}
+
+  /* ================= PORTAL / AUTH ================= */
+  .portal-container{
+    display:flex;width:100vw;height:100vh;
+    background:
+      radial-gradient(circle at 8% 15%, rgba(194,100,63,0.10) 0%, transparent 42%),
+      radial-gradient(circle at 92% 85%, rgba(138,113,48,0.10) 0%, transparent 42%),
+      #F0EBE0;
+    align-items:center;justify-content:center;overflow-y:auto;padding:20px;
+    position:absolute;top:0;left:0;z-index:50;
+    transition:opacity .3s ease, visibility .3s ease;
+  }
+  .portal-container.hidden{opacity:0;visibility:hidden;pointer-events:none;}
+
+  .portal-card{
+    background:rgba(255,255,255,0.72);
+    backdrop-filter:blur(18px);
+    border:1px solid var(--border-color);
+    border-radius:26px;
+    width:100%;max-width:1000px;
+    display:grid;grid-template-columns:1.2fr 1fr;
+    box-shadow:0 30px 70px rgba(40,34,26,0.14);
+    overflow:hidden;
+    animation:riseIn .5s cubic-bezier(.19,1,.22,1);
+  }
+  @keyframes riseIn{from{transform:translateY(14px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+  .portal-info{
+    padding:50px 46px;
+    background:linear-gradient(160deg, rgba(194,100,63,0.06), rgba(245,242,234,0.4));
+    border-right:1px solid var(--border-color);
+    display:flex;flex-direction:column;justify-content:space-between;
+  }
+
+  .portal-brand{display:flex;align-items:center;gap:12px;margin-bottom:40px;}
+  .portal-logo{width:40px;height:40px;flex-shrink:0;}
+  .portal-title-text{font-family:var(--font-display);font-weight:600;font-size:1.25rem;letter-spacing:-0.01em;}
+
+  .portal-hero-title{
+    font-family:var(--font-display);
+    font-size:2.5rem;font-weight:600;line-height:1.18;
+    margin-bottom:16px;color:var(--text-main);
+    letter-spacing:-0.01em;
+  }
+  .portal-hero-desc{color:var(--text-muted);font-size:.98rem;line-height:1.65;margin-bottom:34px;max-width:400px;}
+
+  .portal-features{display:flex;flex-direction:column;gap:20px;}
+  .portal-feature-item{display:flex;gap:14px;align-items:flex-start;}
+  .portal-feature-icon{
+    color:var(--accent-primary);background:rgba(194,100,63,0.09);
+    border-radius:9px;padding:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .portal-feature-text h4{font-size:.92rem;font-weight:600;margin-bottom:3px;font-family:var(--font-body);}
+  .portal-feature-text p{font-size:.8rem;color:var(--text-muted);line-height:1.45;}
+
+  .portal-auth-panel{padding:50px 46px;display:flex;flex-direction:column;justify-content:center;background:var(--bg-panel);}
+
+  .auth-tabs{display:flex;background:rgba(31,27,22,0.04);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:4px;margin-bottom:26px;}
+  .auth-tab{flex:1;padding:9px;border:none;background:transparent;color:var(--text-muted);font-weight:500;font-size:.85rem;border-radius:8px;cursor:pointer;transition:all .2s ease;font-family:var(--font-body);}
+  .auth-tab.active{background:var(--bg-panel);color:var(--text-main);box-shadow:0 3px 10px rgba(40,34,26,0.08);}
+
+  .auth-form{display:flex;flex-direction:column;gap:16px;}
+  .form-group{display:flex;flex-direction:column;gap:8px;}
+  .form-label{font-size:.8rem;font-weight:500;color:var(--text-muted);}
+  .form-input{
+    background:#FBFAF6;border:1px solid var(--border-color);border-radius:var(--radius-md);
+    color:var(--text-main);padding:12px 14px;font-size:.95rem;outline:none;transition:all .2s ease;font-family:var(--font-body);
+  }
+  .form-input:focus{border-color:var(--accent-primary);box-shadow:0 0 0 3px var(--accent-glow);}
+
+  .btn-auth-submit{
+    margin-top:8px;background:var(--accent-gradient);color:#fff;border:none;padding:12px;
+    border-radius:var(--radius-md);font-weight:600;font-size:.95rem;cursor:pointer;
+    transition:transform .15s ease, opacity .15s ease;box-shadow:0 6px 18px var(--accent-glow);
+    font-family:var(--font-body);
+  }
+  .btn-auth-submit:hover{transform:translateY(-1px);}
+  .btn-auth-submit:active{transform:translateY(0);}
+
+  .auth-divider{display:flex;align-items:center;text-align:center;color:var(--text-muted);font-size:.75rem;margin:20px 0;}
+  .auth-divider::before,.auth-divider::after{content:'';flex:1;border-bottom:1px solid var(--border-color);}
+  .auth-divider:not(:empty)::before{margin-right:.5em;}
+  .auth-divider:not(:empty)::after{margin-left:.5em;}
+
+  .btn-guest-login{
+    background:transparent;border:1px solid var(--border-color);color:var(--text-main);
+    padding:12px;border-radius:var(--radius-md);font-weight:500;font-size:.9rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s ease;font-family:var(--font-body);
+  }
+  .btn-guest-login:hover{background:rgba(31,27,22,0.03);border-color:var(--border-color-hover);}
+
+  /* ================= DASHBOARD ================= */
+  .dashboard-container{display:flex;width:100vw;height:100vh;position:relative;opacity:1;transition:opacity .3s ease;}
+  .dashboard-container.hidden{opacity:0;pointer-events:none;}
+
+  .sidebar{
+    width:var(--sidebar-width);background-color:var(--bg-sidebar);
+    border-right:1px solid var(--border-color);display:flex;flex-direction:column;height:100%;
+    z-index:10;transition:width var(--transition-speed) cubic-bezier(.4,0,.2,1), transform var(--transition-speed) cubic-bezier(.4,0,.2,1);
+  }
+  .sidebar.collapsed{width:0;transform:translateX(-100%);border-right:none;}
+
+  .sidebar-header{padding:18px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-color);}
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text-main);}
+  .brand-icon{width:32px;height:32px;flex-shrink:0;}
+  .brand-name{font-family:var(--font-display);font-weight:600;font-size:1.1rem;letter-spacing:-0.01em;}
+
+  .sidebar-actions{display:flex;padding:14px 14px 8px 14px;gap:8px;}
+  .btn-new-chat{
+    flex:1;padding:10px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-md);
+    color:var(--text-main);font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+    transition:all .2s ease;font-size:.85rem;font-family:var(--font-body);
+  }
+  .btn-new-chat:hover{border-color:var(--accent-primary);color:var(--accent-primary);}
+
+  .btn-prompt-lib{
+    padding:10px;background:rgba(194,100,63,0.08);border:1px solid rgba(194,100,63,0.18);border-radius:var(--radius-md);
+    color:var(--accent-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s ease;
+  }
+  .btn-prompt-lib:hover{background:rgba(194,100,63,0.15);border-color:rgba(194,100,63,0.35);}
+
+  .scada-simulator-box{
+    margin:0 14px 12px 14px;background:rgba(178,59,46,0.05);border:1px solid rgba(178,59,46,0.15);
+    border-radius:var(--radius-md);padding:12px;
+  }
+  .scada-sim-header{
+    font-size:.7rem;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.06em;
+    margin-bottom:8px;display:flex;align-items:center;gap:6px;
+  }
+  .scada-sim-btn-list{display:flex;flex-direction:column;gap:6px;}
+  .scada-sim-btn{
+    background:rgba(255,255,255,0.5);border:1px solid rgba(178,59,46,0.12);color:var(--danger);
+    font-size:.74rem;padding:6px 10px;border-radius:6px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:6px;
+    transition:all .2s ease;font-family:var(--font-body);
+  }
+  .scada-sim-btn:hover{background:rgba(178,59,46,0.12);border-color:rgba(178,59,46,0.3);}
+
+  .threads-container{flex:1;overflow-y:auto;padding:0 8px 16px 8px;display:flex;flex-direction:column;gap:3px;}
+  .thread-item{
+    display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:var(--radius-md);
+    cursor:pointer;transition:all .2s ease;color:var(--text-main);font-size:.88rem;border:1px solid transparent;
+  }
+  .thread-item:hover{background:rgba(31,27,22,0.035);}
+  .thread-item.active{background:rgba(194,100,63,0.10);border-color:rgba(194,100,63,0.20);}
+  .thread-info{display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+  .thread-icon{color:var(--text-muted);flex-shrink:0;}
+  .thread-item.active .thread-icon{color:var(--accent-primary);}
+  .thread-title-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:400;}
+  .thread-actions{display:none;align-items:center;gap:4px;}
+  .thread-item:hover .thread-actions{display:flex;}
+  .thread-action-btn{background:transparent;border:none;color:var(--text-muted);padding:4px;border-radius:4px;cursor:pointer;display:flex;align-items:center;transition:all .15s ease;}
+  .thread-action-btn:hover{color:var(--text-main);background:rgba(31,27,22,0.06);}
+  .thread-action-btn.delete:hover{color:var(--danger);background:rgba(178,59,46,0.1);}
+
+  .sidebar-user{
+    padding:14px 16px;border-top:1px solid var(--border-color);background:rgba(31,27,22,0.02);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .user-profile-info{display:flex;align-items:center;gap:10px;min-width:0;}
+  .user-avatar{
+    width:30px;height:30px;border-radius:50%;background:var(--accent-gradient);color:#fff;font-weight:600;
+    font-size:.78rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--font-body);
+  }
+  .user-name-text{font-size:.85rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .btn-logout{background:transparent;border:none;color:var(--text-muted);cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;transition:all .2s ease;}
+  .btn-logout:hover{color:var(--danger);background:rgba(178,59,46,0.1);}
+
+  .chat-layout-wrapper{display:flex;flex:1;width:100%;height:100%;overflow:hidden;position:relative;}
+  .main-content{flex:1;display:flex;flex-direction:column;height:100%;position:relative;background:var(--bg-main);min-width:0;}
+
+  .canvas-panel{
+    width:0;border-left:1px solid var(--border-color);background:var(--bg-panel);display:flex;flex-direction:column;
+    height:100%;transform:translateX(100%);
+    transition:transform .3s cubic-bezier(.4,0,.2,1), width .3s cubic-bezier(.4,0,.2,1);
+    position:absolute;right:0;top:0;z-index:15;
+  }
+  .canvas-panel.active{width:45%;transform:translateX(0);position:relative;}
+  .canvas-panel.active.wide-mode{width:80%;transform:translateX(0);position:relative;}
+
+  .canvas-header{
+    height:60px;padding:0 20px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;
+    justify-content:space-between;background:var(--bg-panel);
+  }
+  .canvas-title{font-family:var(--font-display);font-weight:600;font-size:1rem;display:flex;align-items:center;gap:8px;}
+  .canvas-actions{display:flex;align-items:center;gap:8px;}
+  .canvas-btn{
+    background:transparent;border:1px solid var(--border-color);color:var(--text-muted);width:32px;height:32px;
+    border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s ease;
+  }
+  .canvas-btn:hover{color:var(--text-main);background:rgba(31,27,22,0.04);border-color:var(--border-color-hover);}
+  .canvas-body{flex:1;overflow-y:auto;padding:24px;background:var(--bg-main);}
+
+  .artifact-cta-card{
+    background:rgba(194,100,63,0.05);border:1px solid rgba(194,100,63,0.18);border-radius:var(--radius-md);
+    padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin:14px 0;
+  }
+  .artifact-cta-info{display:flex;align-items:center;gap:10px;}
+  .btn-open-artifact{
+    background:var(--accent-primary);border:none;color:#fff;padding:7px 14px;border-radius:8px;font-size:.8rem;
+    font-weight:500;cursor:pointer;transition:all .2s ease;font-family:var(--font-body);
+  }
+  .btn-open-artifact:hover{background:var(--accent-primary-hover);}
+
+  .chart-container-box{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:16px;margin:16px 0;}
+
+  .chat-header{
+    height:60px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;
+    padding:0 20px;background:rgba(245,242,234,0.85);backdrop-filter:blur(8px);z-index:5;
+  }
+  .header-left{display:flex;align-items:center;gap:14px;min-width:0;}
+  .btn-toggle-sidebar{
+    background:transparent;border:1px solid var(--border-color);color:var(--text-main);width:34px;height:34px;
+    border-radius:var(--radius-md);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s ease;
+  }
+  .btn-toggle-sidebar:hover{background:rgba(31,27,22,0.04);border-color:var(--border-color-hover);}
+
+  .header-chat-title{
+    font-size:1rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;
+    display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--radius-sm);transition:background .15s ease;
+    font-family:var(--font-display);
+  }
+  .header-chat-title:hover{background:rgba(31,27,22,0.04);}
+
+  .header-right{display:flex;align-items:center;gap:10px;}
+  .header-badge{
+    display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-lg);font-size:.78rem;
+    font-weight:500;background:var(--bg-panel);border:1px solid var(--border-color);cursor:pointer;transition:all .2s ease;
+  }
+  .header-badge:hover{border-color:rgba(138,113,48,0.4);background:rgba(138,113,48,0.05);}
+  .header-badge.warning{color:var(--warning);border-color:rgba(156,107,18,0.22);}
+  .header-badge.warning:hover{background:rgba(156,107,18,0.08);border-color:rgba(156,107,18,0.4);}
+
+  .lang-selector-container{display:flex;align-items:center;gap:6px;background:var(--bg-panel);border:1px solid var(--border-color);padding:4px 10px;border-radius:20px;margin-right:4px;}
+
+  .messages-viewport{flex:1;overflow-y:auto;padding:24px 0;display:flex;flex-direction:column;align-items:center;}
+  .messages-container{width:100%;max-width:760px;padding:0 20px;display:flex;flex-direction:column;gap:26px;}
+
+  .message-row{display:flex;gap:14px;width:100%;animation:fadeInUp .3s ease forwards;}
+  @keyframes fadeInUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .message-avatar{
+    width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:600;
+    font-size:.78rem;flex-shrink:0;font-family:var(--font-body);
+  }
+  .message-row.user{justify-content:flex-end;}
+  .message-row.user .message-avatar{background:#3F3830;color:#fff;order:2;border-radius:50%;}
+  .message-row.assistant .message-avatar{background:var(--accent-gradient);color:#fff;}
+  .message-row.tool .message-avatar{background:rgba(178,59,46,0.14);border:1px solid rgba(178,59,46,0.35);color:var(--danger);}
+
+  .message-bubble{max-width:calc(100% - 46px);padding:6px 2px;line-height:1.65;font-size:.98rem;position:relative;}
+  .message-row.user .message-bubble{
+    background-color:var(--bg-bubble-user);border:1px solid rgba(31,27,22,0.06);
+    padding:14px 18px;border-radius:18px;border-top-right-radius:5px;
+  }
+  .message-row.assistant .message-bubble{background-color:transparent;padding:6px 2px;}
+  .message-row.tool .message-bubble{
+    background:var(--bg-panel);border:1px solid var(--border-color);padding:14px 18px;border-radius:14px;
+  }
+
+  .message-controls{display:flex;gap:8px;margin-top:8px;padding-top:6px;}
+  .btn-message-control{
+    background:transparent;border:none;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:6px;
+    font-size:.74rem;padding:4px 8px;border-radius:6px;transition:all .15s ease;font-family:var(--font-body);
+  }
+  .btn-message-control:hover{color:var(--text-main);background:rgba(31,27,22,0.05);}
+
+  .message-content h1,.message-content h2,.message-content h3,.message-content h4{
+    font-family:var(--font-display);margin-top:18px;margin-bottom:10px;font-weight:600;color:var(--text-main);
+  }
+  .message-content h2{font-size:1.2rem;border-bottom:1px solid var(--border-color);padding-bottom:6px;margin-top:22px;}
+  .message-row.assistant .message-content h2::before{content:'';display:inline-block;width:5px;height:16px;background:var(--accent-gradient);border-radius:3px;}
+
+  .message-content p{margin-bottom:12px;}
+  .message-content p:last-child{margin-bottom:0;}
+  .message-content ul,.message-content ol{margin-bottom:12px;padding-left:20px;}
+
+  .message-content table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.88rem;}
+  .message-content th,.message-content td{border:1px solid var(--border-color);padding:8px 12px;text-align:left;}
+  .message-content th{background-color:rgba(31,27,22,0.03);font-weight:600;}
+  .message-content tr:nth-child(even){background-color:rgba(31,27,22,0.015);}
+
+  .message-content pre{background-color:#211D17 !important;border:1px solid var(--border-color);border-radius:var(--radius-md);margin:16px 0;overflow-x:auto;position:relative;}
+  .code-block-header{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;background:rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.08);font-size:.78rem;color:#B9AF9E;}
+  .btn-copy-code{background:transparent;border:none;color:#B9AF9E;cursor:pointer;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;font-size:.74rem;transition:all .15s ease;font-family:var(--font-body);}
+  .btn-copy-code:hover{color:#fff;background:rgba(255,255,255,0.08);}
+  .message-content code{font-family:var(--font-mono);font-size:.85em;padding:2px 6px;background-color:rgba(194,100,63,0.1);border-radius:4px;color:var(--accent-primary-hover);}
+  .message-content pre code{display:block;padding:16px;background-color:transparent;border-radius:0;color:#EDE8DC;}
+
+  .attachment-render{max-width:100%;margin:12px 0;border-radius:var(--radius-md);border:1px solid var(--border-color);overflow:hidden;display:block;}
+  .attachment-render.image{max-height:320px;object-fit:contain;}
+  .attachment-render.audio{width:100%;background:#211D17;}
+  .attachment-render.video{max-height:360px;width:100%;background:#000;}
+
+  .welcome-container{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;margin:auto 0;width:100%;max-width:760px;}
+  .welcome-logo{width:56px;height:56px;margin-bottom:22px;}
+  .welcome-title{font-family:var(--font-display);font-size:2.1rem;font-weight:600;margin-bottom:10px;color:var(--text-main);letter-spacing:-0.01em;}
+  .welcome-subtitle{color:var(--text-muted);font-size:1rem;max-width:520px;margin-bottom:34px;line-height:1.6;}
+
+  .welcome-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;width:100%;max-width:660px;margin-top:6px;}
+  @media (max-width:600px){.welcome-grid{grid-template-columns:1fr;}}
+  .welcome-card{
+    background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:18px;
+    text-align:left;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);display:flex;gap:13px;align-items:flex-start;
+  }
+  .welcome-card:hover{border-color:rgba(194,100,63,0.32);transform:translateY(-2px);box-shadow:0 10px 26px rgba(194,100,63,0.09);}
+  .welcome-card-icon{background:rgba(194,100,63,0.09);border:1px solid rgba(194,100,63,0.18);border-radius:var(--radius-md);padding:9px;color:var(--accent-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .welcome-card:nth-child(2) .welcome-card-icon{background:rgba(138,113,48,0.09);border-color:rgba(138,113,48,0.2);color:var(--accent-secondary);}
+  .welcome-card:nth-child(3) .welcome-card-icon{background:rgba(61,122,85,0.09);border-color:rgba(61,122,85,0.2);color:var(--success);}
+  .welcome-card:nth-child(4) .welcome-card-icon{background:rgba(178,59,46,0.09);border-color:rgba(178,59,46,0.2);color:var(--danger);}
+  .welcome-card-info h3{font-size:.92rem;font-weight:600;color:var(--text-main);margin-bottom:4px;font-family:var(--font-body);}
+  .welcome-card-info p{font-size:.79rem;color:var(--text-muted);line-height:1.4;margin:0;}
+
+  .composer-container{width:100%;display:flex;flex-direction:column;align-items:center;padding:0 20px 22px 20px;background:linear-gradient(180deg,transparent,var(--bg-main) 24px);position:relative;}
+  .composer-wrapper{
+    width:100%;max-width:760px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:22px;
+    padding:10px 14px;display:flex;flex-direction:column;box-shadow:0 12px 30px rgba(40,34,26,0.08);
+  }
+  .composer-wrapper:focus-within{border-color:rgba(194,100,63,0.4);box-shadow:0 12px 30px rgba(194,100,63,0.1);}
+
+  .attachment-preview-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
+  .attachment-preview-card{
+    background:rgba(31,27,22,0.03);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:6px 10px;
+    display:flex;align-items:center;gap:8px;font-size:.8rem;position:relative;max-width:180px;
+  }
+  .attachment-preview-card img{width:24px;height:24px;border-radius:4px;object-fit:cover;}
+  .attachment-preview-card span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
+  .btn-remove-attachment{background:rgba(178,59,46,0.1);border:none;color:var(--danger);border-radius:50%;cursor:pointer;width:16px;height:16px;display:flex;align-items:center;justify-content:center;}
+
+  .composer-input-row{display:flex;align-items:flex-end;gap:10px;width:100%;}
+  .btn-attachment-upload,.btn-voice-input{
+    background:transparent;border:none;color:var(--text-muted);cursor:pointer;width:34px;height:34px;border-radius:var(--radius-md);
+    display:flex;align-items:center;justify-content:center;transition:all .2s ease;flex-shrink:0;
+  }
+  .btn-attachment-upload:hover,.btn-voice-input:hover{color:var(--text-main);background:rgba(31,27,22,0.05);}
+  .btn-voice-input.listening{color:var(--danger);background:rgba(178,59,46,0.1);animation:pulseRecord 1.5s infinite ease-in-out;}
+  @keyframes pulseRecord{0%,100%{opacity:1;}50%{opacity:.5;}}
+
+  .composer-textarea{
+    flex:1;background:transparent;border:none;outline:none;color:var(--text-main);font-family:var(--font-body);
+    font-size:.98rem;line-height:1.5;resize:none;max-height:200px;min-height:24px;padding:6px 0;
+  }
+  .composer-textarea::placeholder{color:var(--text-muted);}
+
+  .btn-send{
+    width:34px;height:34px;border-radius:var(--radius-md);background:var(--accent-primary);color:#fff;border:none;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s ease;flex-shrink:0;
+  }
+  .btn-send:hover:not(:disabled){transform:scale(1.05);background:var(--accent-primary-hover);}
+  .btn-send:disabled{background:rgba(31,27,22,0.08);color:rgba(31,27,22,0.25);cursor:not-allowed;}
+
+  .composer-tools-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;border-top:1px solid var(--border-color);padding-top:8px;}
+  .task-chips-container{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .task-chip{
+    background:rgba(31,27,22,0.02);border:1px solid var(--border-color);color:var(--text-muted);padding:4px 10px;
+    border-radius:var(--radius-lg);font-size:.74rem;cursor:pointer;transition:all .15s ease;display:flex;align-items:center;gap:4px;
+    font-family:var(--font-body);
+  }
+  .task-chip.active{background:rgba(138,113,48,0.1);border-color:rgba(138,113,48,0.35);color:var(--accent-secondary);}
+  .btn-build-prompt{
+    background:transparent;border:1px solid rgba(194,100,63,0.3);color:var(--accent-primary-hover);padding:4px 10px;
+    border-radius:var(--radius-lg);font-size:.74rem;cursor:pointer;transition:all .15s ease;font-family:var(--font-body);
+  }
+  .btn-build-prompt:hover{background:rgba(194,100,63,0.08);}
+  .composer-hint{font-size:.74rem;color:var(--text-muted);}
+
+  .modal-overlay{
+    position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(40,34,26,0.35);backdrop-filter:blur(4px);
+    z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:all .2s ease;
+  }
+  .modal-overlay.active{opacity:1;visibility:visible;}
+  .modal-container{
+    background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-lg);width:90%;max-width:500px;
+    padding:24px;box-shadow:0 24px 60px rgba(40,34,26,0.25);transform:scale(.96);transition:transform .2s ease;
+  }
+  .modal-overlay.active .modal-container{transform:scale(1);}
+  .modal-container.large{max-width:800px;height:80vh;display:flex;flex-direction:column;}
+
+  .prompt-library-layout{display:grid;grid-template-columns:200px 1fr;gap:20px;flex:1;min-height:0;margin-top:16px;}
+  .prompt-library-categories{display:flex;flex-direction:column;gap:6px;border-right:1px solid var(--border-color);padding-right:14px;}
+  .prompt-cat-btn{
+    padding:10px;text-align:left;border:1px solid transparent;background:transparent;color:var(--text-muted);
+    border-radius:var(--radius-md);cursor:pointer;font-size:.84rem;font-weight:500;transition:all .15s ease;font-family:var(--font-body);
+  }
+  .prompt-cat-btn:hover{background:rgba(31,27,22,0.03);}
+  .prompt-cat-btn.active{background:rgba(194,100,63,0.1);color:var(--accent-primary-hover);border-color:rgba(194,100,63,0.2);}
+
+  .prompt-library-list{overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-right:4px;}
+  .prompt-template-card{
+    background:rgba(31,27,22,0.02);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:16px;
+    display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:all .2s ease;
+  }
+  .prompt-template-card:hover{border-color:var(--accent-primary);}
+  .prompt-template-title{font-weight:600;font-size:.94rem;color:var(--text-main);}
+  .prompt-template-desc{font-size:.79rem;color:var(--text-muted);line-height:1.4;}
+  .prompt-template-content{font-family:var(--font-mono);font-size:.73rem;background:rgba(31,27,22,0.04);padding:10px;border-radius:6px;color:var(--text-muted);white-space:pre-wrap;}
+
+  .prompt-compiler-box{display:flex;flex-direction:column;gap:12px;background:rgba(194,100,63,0.05);border:1px dashed rgba(194,100,63,0.3);border-radius:var(--radius-md);padding:16px;margin-top:14px;}
+  .prompt-compiler-title{font-size:.84rem;font-weight:600;color:var(--accent-primary-hover);}
+  .prompt-variables-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .var-field{display:flex;flex-direction:column;gap:4px;}
+  .var-label{font-size:.74rem;color:var(--text-muted);}
+  .var-input{background:var(--bg-main);border:1px solid var(--border-color);border-radius:6px;color:var(--text-main);padding:6px 10px;font-size:.8rem;outline:none;font-family:var(--font-body);}
+  .var-input:focus{border-color:var(--accent-primary);}
+
+  .modal-title{font-family:var(--font-display);font-size:1.22rem;font-weight:600;}
+  .modal-header-row{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:12px;}
+  .btn-close-modal{background:transparent;border:none;color:var(--text-muted);cursor:pointer;}
+  .modal-body{color:var(--text-muted);font-size:.94rem;line-height:1.5;margin-top:14px;}
+  .modal-footer{display:flex;justify-content:flex-end;gap:12px;border-top:1px solid var(--border-color);padding-top:16px;margin-top:16px;}
+  .btn-modal{padding:10px 16px;border-radius:var(--radius-md);font-size:.88rem;font-weight:500;cursor:pointer;border:none;transition:all .15s ease;font-family:var(--font-body);}
+  .btn-modal.cancel{background:transparent;border:1px solid var(--border-color);color:var(--text-main);}
+  .btn-modal.cancel:hover{background:rgba(31,27,22,0.03);}
+  .btn-modal.confirm-save{background:var(--accent-primary);color:#fff;}
+  .btn-modal.confirm-save:hover{background:var(--accent-primary-hover);}
+
+  .btn-scroll-bottom{
+    position:absolute;bottom:120px;right:40px;background:var(--bg-panel);border:1px solid var(--border-color);
+    color:var(--text-main);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;opacity:0;visibility:hidden;transition:all .2s ease;z-index:4;box-shadow:0 6px 16px rgba(40,34,26,0.12);
+  }
+  .btn-scroll-bottom.visible{opacity:1;visibility:visible;}
+
+  .thinking-loader{display:flex;align-items:center;gap:6px;padding:8px 2px;}
+  .thinking-dot{width:7px;height:7px;background-color:var(--accent-primary);border-radius:50%;animation:wave 1.2s infinite ease-in-out;opacity:.35;}
+  .thinking-dot:nth-child(2){animation-delay:.2s;}
+  .thinking-dot:nth-child(3){animation-delay:.4s;}
+  @keyframes wave{0%,100%{transform:translateY(0);opacity:.35;}50%{transform:translateY(-6px);opacity:1;}}
+
+  /* Slide deck */
+  .slide-deck-container{
+    background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:36px;
+    display:flex;flex-direction:column;height:100%;min-height:420px;position:relative;box-shadow:0 16px 40px rgba(40,34,26,0.08);
+  }
+  .slide-card{flex:1;display:none;flex-direction:column;justify-content:center;opacity:0;transform:translateY(10px);transition:all .4s ease;}
+  .slide-card.active{display:flex;opacity:1;transform:translateY(0);}
+  .slide-number-indicator{font-size:.78rem;color:var(--accent-primary);font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;font-family:var(--font-body);}
+  .slide-title-header{font-family:var(--font-display);font-size:1.7rem;font-weight:600;color:var(--text-main);margin-bottom:20px;border-bottom:1px solid var(--border-color);padding-bottom:10px;}
+  .slide-bullet-list{color:var(--text-main);font-size:1.02rem;line-height:1.8;padding-left:24px;}
+  .slide-bullet-list li{margin-bottom:12px;}
+  .slide-player-controls{display:flex;align-items:center;justify-content:space-between;margin-top:30px;border-top:1px solid var(--border-color);padding-top:15px;}
+  .slide-ctrl-btn{
+    background:rgba(31,27,22,0.03);border:1px solid var(--border-color);color:var(--text-main);padding:8px 16px;
+    border-radius:var(--radius-sm);cursor:pointer;font-weight:600;transition:all .2s ease;display:flex;align-items:center;gap:6px;font-family:var(--font-body);
+  }
+  .slide-ctrl-btn:hover:not(:disabled){background:var(--accent-gradient);border-color:transparent;color:#fff;transform:translateY(-1px);}
+  .slide-ctrl-btn:disabled{opacity:.25;cursor:not-allowed;}
+  .slide-indicator-dots{display:flex;gap:8px;}
+  .slide-dot{width:8px;height:8px;border-radius:50%;background:rgba(31,27,22,0.15);cursor:pointer;transition:all .2s ease;}
+  .slide-dot.active{background:var(--accent-primary);transform:scale(1.3);}
+
+  .slide-body-content img,.poster-card-content img{
+    max-width:100%;max-height:250px;object-fit:cover;border-radius:var(--radius-md);border:1px solid var(--border-color);
+    margin-top:12px;display:block;margin-left:auto;margin-right:auto;
+  }
+  .poster-card-content img{max-height:180px;}
+  .slide-body-content ul,.slide-body-content ol{margin-left:20px;margin-bottom:12px;}
+  .slide-body-content li{margin-bottom:8px;}
+
+  /* Poster board & workbench */
+  .poster-workbench {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100%;
+    padding: 40px;
+    background: #1A1713; /* Elegant dark backdrop representing a drafting board */
+    overflow: auto;
+    box-sizing: border-box;
+    width: 100%;
+  }
+  .poster-board {
+    background: #FAF8F5; /* Premium paper texture background */
+    color: #2D261E; /* High-contrast reading color */
+    border: 8px solid #FFF; /* Elegant white border */
+    border-radius: var(--radius-sm);
+    padding: 40px;
+    width: 1200px; /* Fixed poster layout width */
+    min-height: 850px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.45);
+    box-sizing: border-box;
+    transform-origin: top center;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+  }
+  .poster-header {
+    background: linear-gradient(135deg, rgba(194, 100, 63, 0.05) 0%, rgba(138, 113, 48, 0.05) 100%);
+    border: 2px solid rgba(194,100,63,0.15);
+    border-radius: var(--radius-md);
+    padding: 30px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+  .poster-domain {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    color: var(--accent-primary);
+    margin-bottom: 10px;
+  }
+  .poster-title-text {
+    font-family: var(--font-display);
+    font-size: 2.2rem; /* Clean and bold readable title */
+    font-weight: 700;
+    color: #1A1713;
+    margin-bottom: 12px;
+    line-height: 1.25;
+  }
+  .poster-authors {
+    font-size: 1.05rem;
+    color: #7C7264;
+    font-style: italic;
+    font-weight: 500;
+  }
+  .poster-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    flex: 1;
+    box-sizing: border-box;
+  }
+  .poster-column {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    box-sizing: border-box;
+  }
+  .poster-card {
+    background: #FFFFFF;
+    border: 1px solid rgba(31,27,22,0.08);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(40,34,26,0.03);
+    box-sizing: border-box;
+  }
+  .poster-card:hover {
+    border-color: rgba(194,100,63,0.3);
+    box-shadow: 0 6px 18px rgba(194,100,63,0.06);
+  }
+  .poster-card-title {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--accent-secondary);
+    border-left: 4px solid var(--accent-secondary);
+    padding-left: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 4px 0;
+  }
+  .poster-card-content {
+    font-size: 0.88rem;
+    color: #4A4035;
+    line-height: 1.6;
+  }
+  .poster-card-content p {
+    margin-bottom: 10px;
+  }
+  .poster-card-content p:last-child {
+    margin-bottom: 0;
+  }
+  .poster-card-content img {
+    max-width: 100%;
+    max-height: 220px;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(31,27,22,0.08);
+    margin: 12px auto;
+    display: block;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ================= AUTH / LANDING PORTAL ================= -->
+<div class="portal-container" id="portal-view">
+  <div class="portal-card">
+    <div class="portal-info">
+      <div>
+        <div class="portal-brand">
+          <svg class="portal-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M50 4 L60 40 L96 50 L60 60 L50 96 L40 60 L4 50 L40 40 Z" fill="#C2643F"/>
+          </svg>
+          <span class="portal-title-text">Atlas</span>
+        </div>
+        <h1 class="portal-hero-title">Your operations copilot, on call around the clock.</h1>
+        <p class="portal-hero-desc">Atlas troubleshoots equipment, walks safety procedures, runs the calculations, and keeps a clear record of everything — so your team moves faster with fewer surprises.</p>
+      </div>
+
+      <div class="portal-features">
+        <div class="portal-feature-item">
+          <div class="portal-feature-icon"><i data-lucide="image"></i></div>
+          <div class="portal-feature-text">
+            <h4>Sees what you show it</h4>
+            <p>Upload a photo for a visual check, or a recording for automatic transcription.</p>
+          </div>
+        </div>
+        <div class="portal-feature-item">
+          <div class="portal-feature-icon"><i data-lucide="mic"></i></div>
+          <div class="portal-feature-text">
+            <h4>Talk it through</h4>
+            <p>Dictate a report on the floor, and have responses read back to you hands-free.</p>
+          </div>
+        </div>
+        <div class="portal-feature-item">
+          <div class="portal-feature-icon"><i data-lucide="book-open"></i></div>
+          <div class="portal-feature-text">
+            <h4>Ready-made playbooks</h4>
+            <p>Pull a proven prompt, fill in the specifics, and get consistent results every time.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="portal-auth-panel">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login-btn">Log in</button>
+        <button class="auth-tab" id="tab-register-btn">Create account</button>
+      </div>
+
+      <form class="auth-form" id="auth-form">
+        <div class="form-group">
+          <label class="form-label" for="auth-username">Username</label>
+          <input class="form-input" type="text" id="auth-username" required placeholder="Enter username" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="auth-password">Password</label>
+          <input class="form-input" type="password" id="auth-password" required placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn-auth-submit" type="submit" id="btn-auth-submit">Enter Atlas</button>
+      </form>
+
+      <div class="auth-divider">or continue with</div>
+
+      <button class="btn-guest-login" id="btn-guest-login">
+        <i data-lucide="user"></i>
+        Continue as guest
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= DASHBOARD ================= -->
+<div class="dashboard-container hidden" id="dashboard-view">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="/" class="brand">
+        <svg class="brand-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 4 L60 40 L96 50 L60 60 L50 96 L40 60 L4 50 L40 40 Z" fill="#C2643F"/>
+        </svg>
+        <span class="brand-name">Atlas</span>
+      </a>
+      <button class="btn-toggle-sidebar" id="btn-collapse-sidebar" title="Collapse sidebar">
+        <i data-lucide="panel-left-close" style="width:17px;height:17px;"></i>
+      </button>
+    </div>
+
+    <div class="sidebar-actions">
+      <button class="btn-new-chat" id="btn-new-chat">
+        <i data-lucide="plus" style="width:16px;"></i>
+        New chat
+      </button>
+      <button class="btn-prompt-lib" id="btn-open-prompt-lib" title="Open prompt library">
+        <i data-lucide="book-open" style="width:16px;"></i>
+      </button>
+      <button class="btn-prompt-lib" id="btn-toggle-trash" title="Show deleted chats" style="background:transparent; border-color:var(--border-color); color:var(--text-muted);">
+        <i data-lucide="trash-2" style="width:16px;"></i>
+      </button>
+    </div>
+
+    <div class="sidebar-search" style="padding:0 14px 8px 14px; position:relative;">
+      <input type="text" id="search-threads" placeholder="Search chats..." style="width:100%; background:rgba(31,27,22,0.03); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:8px 12px 8px 32px; font-size:.8rem; outline:none; font-family:var(--font-body); transition:all .2s ease;">
+      <i data-lucide="search" style="position:absolute; left:24px; top:10px; width:14px; height:14px; color:var(--text-muted);"></i>
+    </div>
+
+    <div class="scada-simulator-box">
+      <div class="scada-sim-header">
+        <i data-lucide="shield-alert" style="width:14px;height:14px;"></i>
+        SCADA alert simulator
+      </div>
+      <div class="scada-sim-btn-list">
+        <button class="scada-sim-btn" onclick="triggerSimulation('leak')">
+          <i data-lucide="droplet" style="width:12px;height:12px;"></i> Press-1 fluid leak
+        </button>
+        <button class="scada-sim-btn" onclick="triggerSimulation('trip')">
+          <i data-lucide="activity" style="width:12px;height:12px;"></i> Belt-3 motor trip
+        </button>
+        <button class="scada-sim-btn" onclick="triggerSimulation('temp')">
+          <i data-lucide="thermometer" style="width:12px;height:12px;"></i> Pump-2 temperature
+        </button>
+      </div>
+    </div>
+
+    <nav class="threads-container" id="threads-list" aria-label="Chat threads"></nav>
+
+    <div class="sidebar-user">
+      <div class="user-profile-info">
+        <div class="user-avatar" id="val-user-avatar">U</div>
+        <span class="user-name-text" id="val-username">Guest</span>
+      </div>
+      <button class="btn-logout" id="btn-logout" title="Sign out">
+        <i data-lucide="log-out" style="width:16px;height:16px;"></i>
+      </button>
+    </div>
+  </aside>
+
+  <div class="chat-layout-wrapper">
+    <main class="main-content">
+
+      <header class="chat-header">
+        <div class="header-left">
+          <button class="btn-toggle-sidebar" id="btn-expand-sidebar" title="Expand sidebar" style="display:none;">
+            <i data-lucide="panel-left-open" style="width:17px;height:17px;"></i>
+          </button>
+          <div class="header-chat-title" id="header-chat-title" title="Rename thread">
+            <span id="current-thread-title">New chat</span>
+            <i data-lucide="edit-3" style="width:13px;height:13px;color:var(--text-muted);"></i>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="header-badge interactive" id="badge-intent" title="Detected message intent">
+            <span>Intent: <strong id="val-intent">n/a</strong></span>
+          </div>
+          <div class="header-badge warning interactive" id="badge-escalation" title="Escalation flag status">
+            <i data-lucide="alert-triangle" style="width:13px;height:13px;"></i>
+            <span>Escalation: <strong id="val-escalation">false</strong></span>
+          </div>
+
+          <div class="lang-selector-container">
+            <i data-lucide="languages" style="width:14px;height:14px;color:var(--accent-primary);"></i>
+            <select id="select-lang" style="background:transparent;border:none;color:var(--text-main);font-size:.8rem;cursor:pointer;outline:none;padding-right:2px;font-family:var(--font-body);">
+              <option value="auto">Auto-detect</option>
+              <option value="en">English</option>
+              <option value="hi">Hindi (हिन्दी)</option>
+              <option value="gu">Gujarati (ગુજરાતી)</option>
+              <option value="ta">Tamil (தமிழ்)</option>
+              <option value="te">Telugu (తెలుగు)</option>
+              <option value="kn">Kannada (ಕನ್ನಡ)</option>
+              <option value="ml">Malayalam (മലയാളം)</option>
+              <option value="bn">Bengali (বাংলা)</option>
+              <option value="mr">Marathi (मराठी)</option>
+            </select>
+          </div>
+
+          <button class="btn-toggle-sidebar" id="btn-export-thread" title="Export conversation" style="border-radius:50%; margin-right:4px;">
+            <i data-lucide="download" style="width:15px;height:15px;"></i>
+          </button>
+
+          <button class="btn-toggle-sidebar" id="btn-reset-thread" title="Reset thread (clear history)" style="border-radius:50%;">
+            <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i>
+          </button>
+        </div>
+      </header>
+
+      <section class="messages-viewport" id="messages-viewport">
+        <div class="messages-container" id="messages-container"></div>
+        <button class="btn-scroll-bottom" id="btn-scroll-bottom" title="Scroll to bottom">
+          <i data-lucide="arrow-down" style="width:18px;height:18px;"></i>
+        </button>
+      </section>
+
+      <section class="composer-container">
+        <div class="composer-wrapper">
+          <form id="chat-form">
+            <div class="attachment-preview-bar" id="attachment-preview-bar" style="display:none;"></div>
+
+            <div class="composer-input-row">
+              <button class="btn-attachment-upload" type="button" id="btn-upload-file" title="Upload media (image, audio, video)">
+                <i data-lucide="paperclip" style="width:17px;height:17px;"></i>
+              </button>
+              <input type="file" id="hidden-file-input" style="display:none;" accept="image/*,audio/*,video/*,application/pdf,.pdf">
+
+              <textarea class="composer-textarea" id="composer-input" placeholder="Ask Atlas anything…" rows="1" autocomplete="off"></textarea>
+
+              <button class="btn-voice-input" type="button" id="btn-voice-dictate" title="Dictate message">
+                <i data-lucide="mic" style="width:17px;height:17px;"></i>
+              </button>
+
+              <button class="btn-send" id="btn-send-message" type="submit" disabled title="Send message">
+                <i data-lucide="arrow-up" style="width:17px;height:17px;"></i>
+              </button>
+            </div>
+
+            <div class="composer-tools-row">
+              <div class="task-chips-container" id="task-chips">
+                <button type="button" class="task-chip" data-task="status"><i data-lucide="activity" style="width:12px;"></i> Status</button>
+                <button type="button" class="task-chip" data-task="sop"><i data-lucide="file-text" style="width:12px;"></i> SOP</button>
+                <button type="button" class="task-chip" data-task="calculate"><i data-lucide="calculator" style="width:12px;"></i> Calculate</button>
+                <button type="button" class="task-chip" data-task="ticket"><i data-lucide="life-buoy" style="width:12px;"></i> Ticket</button>
+                <button type="button" class="task-chip" data-task="summarize"><i data-lucide="align-left" style="width:12px;"></i> Summarize</button>
+                <button type="button" class="btn-build-prompt" id="btn-build-prompt">Combine tasks</button>
+                <button type="button" class="task-chip" id="btn-composer-prompt-lib" style="background:rgba(194,100,63,0.1);border-color:rgba(194,100,63,0.25);color:var(--accent-primary-hover);font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+                  <i data-lucide="book-open" style="width:12px;height:12px;"></i> Prompt library
+                </button>
+              </div>
+              <div class="composer-hint"><span>Ctrl + Enter to send</span></div>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <section class="canvas-panel" id="canvas-panel">
+      <div class="canvas-header">
+        <div class="canvas-title">
+          <i data-lucide="layout" style="width:17px;height:17px;color:var(--accent-primary);"></i>
+          <span id="canvas-title-text">Artifact viewer</span>
+        </div>
+        <div class="canvas-actions">
+          <div id="poster-zoom-controls" style="display:none; align-items:center; gap:6px; margin-right:12px;">
+            <button class="canvas-btn" id="btn-zoom-out" title="Zoom out" type="button"><i data-lucide="zoom-out" style="width:15px;height:15px;"></i></button>
+            <span id="zoom-level-text" style="font-size:0.75rem; min-width:40px; text-align:center; color:var(--text-muted); font-family:var(--font-body); font-weight:600;">100%</span>
+            <button class="canvas-btn" id="btn-zoom-in" title="Zoom in" type="button"><i data-lucide="zoom-in" style="width:15px;height:15px;"></i></button>
+            <button class="canvas-btn" id="btn-zoom-reset" title="Fit to screen" type="button"><i data-lucide="maximize" style="width:15px;height:15px;"></i></button>
+          </div>
+          <button class="canvas-btn" id="canvas-copy" title="Copy content"><i data-lucide="copy" style="width:15px;height:15px;"></i></button>
+          <button class="canvas-btn" id="canvas-fullscreen" title="Toggle fullscreen"><i data-lucide="maximize-2" style="width:15px;height:15px;"></i></button>
+          <button class="canvas-btn" id="canvas-close" title="Close panel"><i data-lucide="x" style="width:17px;height:17px;"></i></button>
+        </div>
+      </div>
+      <div class="canvas-body" id="canvas-body-content"></div>
+    </section>
+  </div>
+</div>
+
+<!-- Prompt Library Modal -->
+<div class="modal-overlay" id="prompt-lib-modal">
+  <div class="modal-container large">
+    <div class="modal-header-row">
+      <div class="modal-title">Prompt library</div>
+      <button class="btn-close-modal" id="btn-close-prompt-lib"><i data-lucide="x"></i></button>
+    </div>
+    <div class="prompt-library-layout">
+      <div class="prompt-library-categories" id="prompt-categories">
+        <button class="prompt-cat-btn active" data-cat="all">All templates</button>
+        <button class="prompt-cat-btn" data-cat="industrial">🔧 Industrial support</button>
+        <button class="prompt-cat-btn" data-cat="math">📊 Calculations</button>
+        <button class="prompt-cat-btn" data-cat="slides">🖥️ Slide decks</button>
+        <button class="prompt-cat-btn" data-cat="poster">🎓 Research posters</button>
+        <button class="prompt-cat-btn" data-cat="general">💻 Coding &amp; general</button>
+      </div>
+      <div class="prompt-library-list" id="prompt-templates-list"></div>
+    </div>
+    <div class="prompt-compiler-box" id="prompt-compiler" style="display:none;">
+      <div class="prompt-compiler-title">Customize variables</div>
+      <div class="prompt-variables-grid" id="prompt-variables-grid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal cancel" id="btn-cancel-prompt-use">Cancel</button>
+      <button class="btn-modal confirm-save" id="btn-confirm-prompt-use" disabled>Insert into chat</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal-container">
+    <div class="modal-title">Delete chat</div>
+    <div class="modal-body">Are you sure you want to delete this chat thread? This permanently erases the context and history from the server.</div>
+    <div class="modal-footer">
+      <button class="btn-modal cancel" id="delete-modal-cancel">Cancel</button>
+      <button class="btn-modal confirm-delete" id="delete-modal-confirm" style="background:var(--danger);color:#fff;">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rename Modal -->
+<div class="modal-overlay" id="rename-modal">
+  <div class="modal-container">
+    <div class="modal-title">Rename chat</div>
+    <div class="modal-body">
+      Enter a new title for this conversation:
+      <input type="text" class="modal-input" id="rename-modal-input" placeholder="Chat title" style="width:100%;background:var(--bg-main);border:1px solid var(--border-color);color:var(--text-main);padding:10px;border-radius:8px;margin-top:10px;outline:none;font-family:var(--font-body);">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal cancel" id="rename-modal-cancel">Cancel</button>
+      <button class="btn-modal confirm-save" id="rename-modal-confirm">Save title</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="export-modal">
+  <div class="modal-container">
+    <div class="modal-title">Export conversation</div>
+    <div class="modal-body">
+      Choose your preferred export format:
+      <div style="display:flex; gap:12px; margin-top:16px;">
+        <button class="btn-modal" id="btn-export-md" style="flex:1; background:rgba(194,100,63,0.1); color:var(--accent-primary-hover); border:1px solid rgba(194,100,63,0.25);">Markdown (.md)</button>
+        <button class="btn-modal" id="btn-export-pdf" style="flex:1; background:rgba(61,122,85,0.1); color:var(--success); border:1px solid rgba(61,122,85,0.25);">PDF Document (.pdf)</button>
+        <button class="btn-modal" id="btn-export-txt" style="flex:1; background:rgba(31,27,22,0.05); color:var(--text-main); border:1px solid var(--border-color);">Text File (.txt)</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal cancel" id="export-modal-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let activeThreadId = localStorage.getItem('active-thread-id') || 'chat-default';
+  let threads = [];
+  let isThinking = false;
+  let authMode = 'login';
+  let currentUsername = '';
+  let attachmentsList = [];
+  let deleteTargetThreadId = null;
+  let renameTargetThreadId = null;
+  let activeCanvasContent = '';
+  let activeCanvasTitle = '';
+  let currentSpeechUtterance = null;
+  let recognition = null;
+  let isVoiceDictating = false;
+  let searchQuery = '';
+  let showDeletedOnly = false;
+  let currentDownloadKind = null; // 'pptx' | 'poster-pdf' | null
+
+  const portalView = document.getElementById('portal-view');
+  const dashboardView = document.getElementById('dashboard-view');
+  const authForm = document.getElementById('auth-form');
+  const authUsernameInput = document.getElementById('auth-username');
+  const authPasswordInput = document.getElementById('auth-password');
+  const btnAuthSubmit = document.getElementById('btn-auth-submit');
+  const tabLoginBtn = document.getElementById('tab-login-btn');
+  const tabRegisterBtn = document.getElementById('tab-register-btn');
+  const btnGuestLogin = document.getElementById('btn-guest-login');
+
+  const sidebar = document.getElementById('sidebar');
+  const btnCollapseSidebar = document.getElementById('btn-collapse-sidebar');
+  const btnExpandSidebar = document.getElementById('btn-expand-sidebar');
+  const btnNewChat = document.getElementById('btn-new-chat');
+  const threadsList = document.getElementById('threads-list');
+  const valUsername = document.getElementById('val-username');
+  const valUserAvatar = document.getElementById('val-user-avatar');
+  const btnLogout = document.getElementById('btn-logout');
+
+  const headerChatTitle = document.getElementById('header-chat-title');
+  const currentThreadTitleText = document.getElementById('current-thread-title');
+  const valIntent = document.getElementById('val-intent');
+  const valEscalation = document.getElementById('val-escalation');
+  const btnResetThread = document.getElementById('btn-reset-thread');
+
+  const messagesViewport = document.getElementById('messages-viewport');
+  const messagesContainer = document.getElementById('messages-container');
+  const btnScrollBottom = document.getElementById('btn-scroll-bottom');
+
+  const chatForm = document.getElementById('chat-form');
+  const composerInput = document.getElementById('composer-input');
+  const btnSendMessage = document.getElementById('btn-send-message');
+  const taskChips = document.getElementById('task-chips');
+  const btnBuildPrompt = document.getElementById('btn-build-prompt');
+
+  const btnUploadFile = document.getElementById('btn-upload-file');
+  const hiddenFileInput = document.getElementById('hidden-file-input');
+  const attachmentPreviewBar = document.getElementById('attachment-preview-bar');
+  const btnVoiceDictate = document.getElementById('btn-voice-dictate');
+
+  const canvasPanel = document.getElementById('canvas-panel');
+  const canvasTitleText = document.getElementById('canvas-title-text');
+  const canvasBodyContent = document.getElementById('canvas-body-content');
+  const canvasCopy = document.getElementById('canvas-copy');
+  const canvasFullscreen = document.getElementById('canvas-fullscreen');
+  const canvasClose = document.getElementById('canvas-close');
+
+  const btnOpenPromptLib = document.getElementById('btn-open-prompt-lib');
+  const promptLibModal = document.getElementById('prompt-lib-modal');
+  const btnClosePromptLib = document.getElementById('btn-close-prompt-lib');
+  const promptTemplatesList = document.getElementById('prompt-templates-list');
+  const promptCompiler = document.getElementById('prompt-compiler');
+  const promptVariablesGrid = document.getElementById('prompt-variables-grid');
+  const btnCancelPromptUse = document.getElementById('btn-cancel-prompt-use');
+  const btnConfirmPromptUse = document.getElementById('btn-confirm-prompt-use');
+
+  const deleteModal = document.getElementById('delete-modal');
+  const deleteModalCancel = document.getElementById('delete-modal-cancel');
+  const deleteModalConfirm = document.getElementById('delete-modal-confirm');
+
+  const renameModal = document.getElementById('rename-modal');
+  const renameModalCancel = document.getElementById('rename-modal-cancel');
+  const renameModalConfirm = document.getElementById('rename-modal-confirm');
+  const renameModalInput = document.getElementById('rename-modal-input');
+
+  marked.setOptions({
+    gfm: true, breaks: true,
+    highlight: function(code, lang) {
+      if (lang && hljs.getLanguage(lang)) return hljs.highlight(code, { language: lang }).value;
+      return hljs.highlightAuto(code).value;
+    }
+  });
+
+  let promptTemplates = [
+    { id:'equip-diagnose', category:'industrial', title:'🔧 Equipment fault diagnosis', desc:'Check state logs, evaluate tolerances, and recommend next steps.', content:'Check the status of [Equipment ID], look up the safety SOP handover logs, and diagnose the fault. The symptom reported is: [Symptom description]. Recommend intermediate mitigation tasks before technician arrival.' },
+    { id:'shift-handover', category:'industrial', title:'📄 Shift handover review', desc:'Draft handover documentation summarizing anomalies and unresolved issues.', content:'Look up the shift handover protocol in the knowledge base and compile a handover log. Current items to note: [Unresolved ticket IDs / issues]. Focus on safety alerts and list priority actions for shift [Shift Name].' },
+    { id:'loto-safety', category:'industrial', title:'🔐 Lockout-tagout (LOTO) audit', desc:'Generate a safety isolation compliance checklist.', content:'Verify safety LOTO procedures for [Equipment Tag]. Check which valves require padlock lockouts, identify the primary electrical breaker location, and outline the energy-zero verification steps.' },
+    { id:'preventive-maintenance', category:'industrial', title:'🛠️ Preventive maintenance guide', desc:'Build a maintenance schedule based on run hours.', content:'Compile a preventive maintenance checklist for [Machine Name] based on its running hours: [Run Hours] and age: [Age in Years]. Highlight safety precautions and required spare parts.' },
+    { id:'calculate-consumption', category:'math', title:'📊 Coolant consumption calculator', desc:'Evaluate total volume usage from flow rate and duration.', content:'Calculate the total volume of coolant used if flow rate is [Flow Rate] L/min for [Duration] hours. Convert the result to gallons and show variables, conversion factor, and calculation details.' },
+    { id:'tolerance-eval', category:'math', title:'📏 Mechanical clearance tolerances', desc:'Compare measured clearances against SOP standards.', content:'Evaluate if a measured clearance of [Measured Value] mm falls within the standard specification limits of [Min SOP Limit] mm to [Max SOP Limit] mm. Compute deviation and recommend if immediate lockout/tagout (LOTO) is required.' },
+    { id:'exchanger-efficiency', category:'math', title:'🌡️ Heat exchanger efficiency', desc:'Evaluate heat transfer rates and thermal efficiency.', content:'Compute the thermal efficiency of a shell-and-tube heat exchanger. Hot fluid inlet is [Hot Inlet Temp]°C and outlet is [Hot Outlet Temp]°C. Cold fluid inlet is [Cold Inlet Temp]°C and outlet is [Cold Outlet Temp]°C. Flow rate is [Flow Rate] kg/s.' },
+    { id:'safety-slides', category:'slides', title:'🖥️ Industrial safety slide deck', desc:'Create an interactive presentation for safety briefings.', content:'Generate a 4-slide presentation summarizing industrial safety protocols for [Facility Name]. Focus on PPE compliance, emergency shut-off points, hazard identification, and LOTO procedure.' },
+    { id:'shift-handover-slides', category:'slides', title:'🖥️ Operations handover slides', desc:'Format daily crew change logs into visual slides.', content:'Generate a 3-slide presentation for the operations team handover of Shift [Shift Number]. Include slide 1: Safety Summary, slide 2: Ongoing Critical Alarms, and slide 3: Tasks Pending Next Shift.' },
+    { id:'concept-slides', category:'slides', title:'🖥️ Concept explanation slides', desc:'Generate an interactive technical pitch deck.', content:'Generate a 5-slide presentation introducing the concept of: [Technical Concept]. Cover historical context, core mechanics, mathematical formulation, practical examples, and future trends.' },
+    { id:'paper-poster', category:'poster', title:'🎓 Academic paper poster layout', desc:'Generate a 3-column conference layout summarizing a paper.', content:'Analyze the research paper on [Research Topic] and layout a scientific research poster. Use the format with sections: Abstract, Introduction, Experimental Setup, Key Findings, and References.' },
+    { id:'material-science-poster', category:'poster', title:'🎓 Material science poster', desc:'Formulate stress-testing and microstructural findings.', content:'Create a 3-column academic conference poster summarizing research on: [Material Name] properties under high stress. Structure sections: Abstract, Stress Testing Methodology, Microstructure Analysis, and References.' },
+    { id:'reactor-optimization-poster', category:'poster', title:'🎓 Design optimization poster', desc:'Create a poster representing a design optimization study.', content:'Create a conference poster representing a design optimization study for a [Reactor Type] reactor. Include domain="Chemical Engineering", authors="Process Design Group". Specify sections: Abstract, Mathematical Model, Parametric Analysis, and References.' },
+    { id:'fastapi-resource', category:'general', title:'💻 FastAPI database boilerplate', desc:'Generate a complete FastAPI resource with database connection.', content:'Write a complete Python script using FastAPI, SQLModel/SQLite, and Pydantic to create, read, update, and delete the resource: [Resource Name]. Make sure endpoints are secure and include validation schemas.' },
+    { id:'incident-report', category:'general', title:'📝 Professional incident report', desc:'Draft a formal incident report with timeline and impact.', content:'Draft a professional incident report describing a [Incident Type] event occurred on [Incident Date]. Location: [Plant Area]. Immediate actions taken: [Action items]. Conclude with a recommendation for root cause analysis.' },
+    { id:'sql-migration', category:'general', title:'🗄️ SQL schema migration script', desc:'Generate a migration SQL script with index preservation.', content:'Write a production-ready SQL script to migrate database [Old Table Name] to [New Table Name], ensuring data preservation, indexing, and foreign key integrity. Include rollback commands.' }
+  ];
+
+  let selectedTemplate = null;
+
+  async function init() {
+    lucide.createIcons();
+
+    const authRes = await checkAuthStatus();
+    if (authRes.authenticated) {
+      showChatDashboard(authRes.username);
+    } else {
+      showPortalView();
+    }
+
+    try {
+      const promptsRes = await fetch('/static/prompts.json');
+      if (promptsRes.ok) promptTemplates = await promptsRes.json();
+    } catch (err) {
+      console.warn('Using default fallback prompts:', err);
+    }
+
+    tabLoginBtn.addEventListener('click', () => switchAuthMode('login'));
+    tabRegisterBtn.addEventListener('click', () => switchAuthMode('register'));
+    authForm.addEventListener('submit', handleAuthSubmit);
+    btnGuestLogin.addEventListener('click', handleGuestLogin);
+    btnLogout.addEventListener('click', handleLogout);
+
+    btnCollapseSidebar.addEventListener('click', toggleSidebar);
+    btnExpandSidebar.addEventListener('click', toggleSidebar);
+    btnNewChat.addEventListener('click', createNewChat);
+    btnResetThread.addEventListener('click', resetCurrentThread);
+    btnScrollBottom.addEventListener('click', scrollToBottom);
+    messagesViewport.addEventListener('scroll', handleViewportScroll);
+
+    deleteModalCancel.addEventListener('click', () => deleteModal.classList.remove('active'));
+    deleteModalConfirm.addEventListener('click', executeDeleteThread);
+
+    renameModalCancel.addEventListener('click', () => renameModal.classList.remove('active'));
+    renameModalConfirm.addEventListener('click', executeRenameThread);
+
+    headerChatTitle.addEventListener('click', () => {
+      const threadObj = threads.find(t => t.thread_id === activeThreadId);
+      openRenameModal(activeThreadId, threadObj ? threadObj.title : activeThreadId);
+    });
+
+    canvasClose.addEventListener('click', closeCanvasPanel);
+    canvasCopy.addEventListener('click', copyCanvasContent);
+    canvasFullscreen.addEventListener('click', toggleCanvasFullscreen);
+
+    const canvasDownload = document.createElement('button');
+    canvasDownload.className = 'canvas-btn';
+    canvasDownload.id = 'canvas-download';
+    canvasDownload.title = 'Download file';
+    canvasDownload.innerHTML = '<i data-lucide="download" style="width:15px;height:15px;"></i>';
+    canvasDownload.style.display = 'none';
+    document.querySelector('.canvas-actions').insertBefore(canvasDownload, canvasCopy);
+
+    canvasDownload.addEventListener('click', async () => {
+      if (!currentDownloadKind) return;
+      const endpoint = currentDownloadKind === 'pptx'
+        ? `/export/pptx/${encodeURIComponent(activeThreadId)}`
+        : `/export/poster-pdf/${encodeURIComponent(activeThreadId)}`;
+      try {
+        const res = await fetch(endpoint);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          alert((err.error && err.error.message) || err.detail || 'Download failed.');
+          return;
+        }
+        const blob = await res.blob();
+        const disposition = res.headers.get('Content-Disposition') || '';
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        const filename = match ? match[1] : (currentDownloadKind === 'pptx' ? 'presentation.pptx' : 'poster.pdf');
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error(err);
+        alert('Failed to download file.');
+      }
+    });
+
+    composerInput.addEventListener('input', handleComposerResize);
+    chatForm.addEventListener('submit', handleChatSubmit);
+    composerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        chatForm.requestSubmit();
+      }
+    });
+
+    btnUploadFile.addEventListener('click', () => hiddenFileInput.click());
+    hiddenFileInput.addEventListener('change', handleFileUpload);
+
+    btnVoiceDictate.addEventListener('click', toggleVoiceDictation);
+    initSpeechRecognition();
+
+    const selectLang = document.getElementById('select-lang');
+    const savedLang = localStorage.getItem('user-selected-lang') || 'auto';
+    selectLang.value = savedLang;
+    selectLang.addEventListener('change', () => {
+      localStorage.setItem('user-selected-lang', selectLang.value);
+    });
+
+    btnOpenPromptLib.addEventListener('click', openPromptLibrary);
+    btnClosePromptLib.addEventListener('click', closePromptLibrary);
+    btnCancelPromptUse.addEventListener('click', closePromptLibrary);
+    btnConfirmPromptUse.addEventListener('click', compileAndInsertPrompt);
+
+    document.querySelectorAll('.prompt-cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.prompt-cat-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderPromptLibrary(btn.dataset.cat);
+      });
+    });
+
+    document.querySelectorAll('.task-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        if (chip.id === 'btn-composer-prompt-lib') return;
+        chip.classList.toggle('active');
+      });
+    });
+    document.getElementById('btn-composer-prompt-lib').addEventListener('click', openPromptLibrary);
+    btnBuildPrompt.addEventListener('click', buildPromptFromChips);
+
+    document.getElementById('badge-intent').addEventListener('click', () => {
+      const intent = valIntent.textContent.trim();
+      composerInput.value = intent === 'n/a'
+        ? 'Please summarize the current issue in summary, checks, findings, recommendation, and escalation format.'
+        : 'Explain the current ' + intent + ' issue in summary, checks, findings, recommendation, and escalation format.';
+      handleComposerResize();
+      composerInput.focus();
+    });
+
+    document.getElementById('badge-escalation').addEventListener('click', () => {
+      const escalated = valEscalation.textContent.trim() === 'true';
+      composerInput.value = escalated
+        ? 'Continue with escalation steps and provide a structured incident summary.'
+        : 'No escalation is needed right now. Provide the next operational step and any verification checks.';
+      handleComposerResize();
+      composerInput.focus();
+    });
+
+    // Search & trash toggle
+    const searchThreads = document.getElementById('search-threads');
+    const btnToggleTrash = document.getElementById('btn-toggle-trash');
+
+    if (searchThreads) {
+      searchThreads.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        refreshThreadsList();
+      });
+    }
+
+    if (btnToggleTrash) {
+      btnToggleTrash.addEventListener('click', () => {
+        showDeletedOnly = !showDeletedOnly;
+        btnToggleTrash.style.backgroundColor = showDeletedOnly ? 'rgba(178,59,46,0.1)' : 'transparent';
+        btnToggleTrash.style.color = showDeletedOnly ? 'var(--danger)' : 'var(--text-muted)';
+        refreshThreadsList();
+      });
+    }
+
+    // Export Modal Events
+    const btnExportThread = document.getElementById('btn-export-thread');
+    const exportModal = document.getElementById('export-modal');
+    const exportModalCancel = document.getElementById('export-modal-cancel');
+    const btnExportMd = document.getElementById('btn-export-md');
+    const btnExportPdf = document.getElementById('btn-export-pdf');
+    const btnExportTxt = document.getElementById('btn-export-txt');
+
+    if (btnExportThread) {
+      btnExportThread.addEventListener('click', () => {
+        exportModal.classList.add('active');
+      });
+    }
+
+    if (exportModalCancel) {
+      exportModalCancel.addEventListener('click', () => {
+        exportModal.classList.remove('active');
+      });
+    }
+
+    if (btnExportMd) {
+      btnExportMd.addEventListener('click', () => downloadExport('markdown'));
+    }
+    if (btnExportPdf) {
+      btnExportPdf.addEventListener('click', () => downloadExport('pdf'));
+    }
+    if (btnExportTxt) {
+      btnExportTxt.addEventListener('click', () => downloadExport('plain'));
+    }
+  }
+
+  async function downloadExport(format) {
+    try {
+      const res = await fetch(`/threads/${encodeURIComponent(activeThreadId)}/export?format=${format}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert((err.error && err.error.message) || err.detail || 'Export failed.');
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `thread_${activeThreadId}.${format === 'plain' ? 'txt' : format === 'markdown' ? 'md' : 'pdf'}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      document.getElementById('export-modal').classList.remove('active');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to export thread.');
+    }
+  }
+
+  function toggleSidebar() {
+    sidebar.classList.toggle('collapsed');
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    btnExpandSidebar.style.display = isCollapsed ? 'flex' : 'none';
+  }
+
+  async function checkAuthStatus() {
+    try {
+      const res = await fetch('/me');
+      if (res.ok) return await res.json();
+    } catch (err) { console.error('Session check failed', err); }
+    return { authenticated: false };
+  }
+
+  function switchAuthMode(mode) {
+    authMode = mode;
+    if (mode === 'login') {
+      tabLoginBtn.classList.add('active');
+      tabRegisterBtn.classList.remove('active');
+      btnAuthSubmit.textContent = 'Enter Atlas';
+    } else {
+      tabLoginBtn.classList.remove('active');
+      tabRegisterBtn.classList.add('active');
+      btnAuthSubmit.textContent = 'Register & log in';
+    }
+  }
+
+  async function handleAuthSubmit(e) {
+    e.preventDefault();
+    const username = authUsernameInput.value.trim();
+    const password = authPasswordInput.value;
+    if (!username || !password) return;
+
+    const endpoint = authMode === 'login' ? '/login' : '/register';
+    btnAuthSubmit.disabled = true;
+    btnAuthSubmit.textContent = 'Authenticating…';
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        showChatDashboard(data.username);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error?.message || errData.detail || 'Authentication failed. Please check credentials.');
+      }
+    } catch (err) {
+      console.error('Auth request error', err);
+      alert('Server communication error.');
+    } finally {
+      btnAuthSubmit.disabled = false;
+      switchAuthMode(authMode);
+    }
+  }
+
+  async function handleGuestLogin() {
+    try {
+      const res = await fetch('/guest', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        showChatDashboard(data.username);
+      }
+    } catch (err) { console.error(err); }
+  }
+
+  async function handleLogout() {
+    stopReadAloud();
+    closeCanvasPanel();
+    try { await fetch('/logout', { method: 'POST' }); } catch (err) { console.error(err); }
+    localStorage.removeItem('active-thread-id');
+    window.location.href = '/';
+  }
+
+  function showPortalView() {
+    portalView.classList.remove('hidden');
+    dashboardView.classList.add('hidden');
+    currentUsername = '';
+  }
+
+  function showChatDashboard(username) {
+    currentUsername = username;
+    portalView.classList.add('hidden');
+    dashboardView.classList.remove('hidden');
+
+    valUsername.textContent = username;
+    valUserAvatar.textContent = username.charAt(0).toUpperCase();
+
+    authUsernameInput.value = '';
+    authPasswordInput.value = '';
+
+    refreshThreadsList().then(() => { selectThread(activeThreadId); });
+  }
+
+  async function refreshThreadsList() {
+    try {
+      let url = '/threads?';
+      if (showDeletedOnly) {
+        url += 'include_deleted=true&';
+      }
+      if (searchQuery) {
+        url += `q=${encodeURIComponent(searchQuery)}&`;
+      }
+      const res = await fetch(url);
+      const data = await res.json();
+      threads = data.threads || [];
+
+      if (showDeletedOnly) {
+        threads = threads.filter(t => t.deleted_at);
+      }
+
+      if (threads.length === 0) {
+        activeThreadId = 'chat-' + Date.now();
+      } else if (!threads.find(t => t.thread_id === activeThreadId)) {
+        activeThreadId = threads[0].thread_id;
+      }
+      renderThreads();
+    } catch (err) { console.error(err); }
+  }
+
+  function renderThreads() {
+    threadsList.innerHTML = '';
+    threads.forEach(t => {
+      const item = document.createElement('div');
+      item.className = `thread-item ${t.thread_id === activeThreadId ? 'active' : ''}`;
+      item.dataset.id = t.thread_id;
+
+      const isSoftDeleted = !!t.deleted_at;
+      const pinTitle = t.pinned ? 'Unpin chat' : 'Pin chat';
+
+      let actionsHTML = '';
+      if (isSoftDeleted) {
+        actionsHTML = `
+          <button class="thread-action-btn restore" title="Restore chat"><i data-lucide="rotate-ccw" style="width:14px;height:14px;color:var(--success);"></i></button>
+          <button class="thread-action-btn hard-delete" title="Delete permanently"><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--danger);"></i></button>
+        `;
+      } else {
+        actionsHTML = `
+          <button class="thread-action-btn pin-btn ${t.pinned ? 'pinned' : ''}" title="${pinTitle}"><i data-lucide="star" style="width:14px;height:14px;${t.pinned ? 'fill:var(--accent-primary);color:var(--accent-primary);' : ''}"></i></button>
+          <button class="thread-action-btn rename" title="Rename title"><i data-lucide="edit-2" style="width:14px;height:14px;"></i></button>
+          <button class="thread-action-btn delete" title="Delete chat"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+        `;
+      }
+
+      item.innerHTML = `
+        <div class="thread-info" style="${isSoftDeleted ? 'opacity: 0.6; text-decoration: line-through;' : ''}">
+          <i data-lucide="message-square" class="thread-icon" style="width:16px;height:16px;"></i>
+          <span class="thread-title-text" style="${t.pinned ? 'font-weight: 600;' : ''}">${t.title || t.thread_id}</span>
+        </div>
+        <div class="thread-actions">
+          ${actionsHTML}
+        </div>
+      `;
+
+      item.addEventListener('click', (e) => {
+        if (e.target.closest('.thread-action-btn')) return;
+        selectThread(t.thread_id);
+      });
+
+      if (isSoftDeleted) {
+        item.querySelector('.restore').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          try {
+            const res = await fetch(`/threads/${encodeURIComponent(t.thread_id)}/restore`, { method: 'POST' });
+            if (res.ok) await refreshThreadsList();
+          } catch (err) { console.error(err); }
+        });
+
+        item.querySelector('.hard-delete').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm('Permanently delete this chat? This cannot be undone.')) return;
+          try {
+            const res = await fetch(`/threads/${encodeURIComponent(t.thread_id)}?hard=true`, { method: 'DELETE' });
+            if (res.ok) {
+              if (t.thread_id === activeThreadId) {
+                const nextThread = threads.find(x => x.thread_id !== t.thread_id);
+                if (nextThread) { await selectThread(nextThread.thread_id); } else { await createNewChat(); }
+              } else {
+                await refreshThreadsList();
+              }
+            }
+          } catch (err) { console.error(err); }
+        });
+      } else {
+        item.querySelector('.pin-btn').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          try {
+            const res = await fetch(`/threads/${encodeURIComponent(t.thread_id)}/pin?pinned=${!t.pinned}`, { method: 'POST' });
+            if (res.ok) await refreshThreadsList();
+          } catch (err) { console.error(err); }
+        });
+
+        item.querySelector('.rename').addEventListener('click', (e) => {
+          e.stopPropagation();
+          openRenameModal(t.thread_id, t.title || t.thread_id);
+        });
+
+        item.querySelector('.delete').addEventListener('click', (e) => {
+          e.stopPropagation();
+          openDeleteModal(t.thread_id);
+        });
+      }
+
+      threadsList.appendChild(item);
+    });
+    lucide.createIcons();
+  }
+
+  function openRenameModal(threadId, currentTitle) {
+    renameTargetThreadId = threadId;
+    renameModalInput.value = currentTitle;
+    renameModal.classList.add('active');
+    renameModalInput.focus();
+  }
+
+  async function executeRenameThread() {
+    const newTitle = renameModalInput.value.trim();
+    if (!newTitle) return;
+    try {
+      const res = await fetch(`/threads/${encodeURIComponent(renameTargetThreadId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle })
+      });
+      if (res.ok) {
+        renameModal.classList.remove('active');
+        if (renameTargetThreadId === activeThreadId) currentThreadTitleText.textContent = newTitle;
+        await refreshThreadsList();
+      }
+    } catch (err) { console.error(err); }
+  }
+
+  function openDeleteModal(threadId) {
+    deleteTargetThreadId = threadId;
+    deleteModal.classList.add('active');
+  }
+
+  async function executeDeleteThread() {
+    try {
+      const res = await fetch(`/threads/${encodeURIComponent(deleteTargetThreadId)}`, { method: 'DELETE' });
+      if (res.ok) {
+        deleteModal.classList.remove('active');
+        if (deleteTargetThreadId === activeThreadId) {
+          const nextThread = threads.find(t => t.thread_id !== deleteTargetThreadId);
+          if (nextThread) { await selectThread(nextThread.thread_id); } else { await createNewChat(); }
+        } else {
+          await refreshThreadsList();
+        }
+      }
+    } catch (err) { console.error(err); }
+  }
+
+  async function selectThread(threadId) {
+    stopReadAloud();
+    closeCanvasPanel();
+    activeThreadId = threadId;
+    localStorage.setItem('active-thread-id', threadId);
+
+    document.querySelectorAll('.thread-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.id === threadId);
+    });
+
+    const threadObj = threads.find(t => t.thread_id === threadId);
+    currentThreadTitleText.textContent = threadObj ? threadObj.title : 'New chat';
+
+    await loadThreadHistory(threadId);
+  }
+
+  async function createNewChat() {
+    stopReadAloud();
+    closeCanvasPanel();
+    const newId = 'chat-' + Date.now();
+    await selectThread(newId);
+    clearMessageViewport();
+    showWelcomeScreen();
+    currentThreadTitleText.textContent = 'New chat';
+    valIntent.textContent = 'n/a';
+    valEscalation.textContent = 'false';
+  }
+
+  function clearMessageViewport() {
+    messagesContainer.innerHTML = '';
+    attachmentsList = [];
+    renderAttachmentPreviewBar();
+  }
+
+  function showWelcomeScreen() {
+    clearMessageViewport();
+    const welcome = document.createElement('div');
+    welcome.className = 'welcome-container';
+    welcome.innerHTML = `
+      <svg class="welcome-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 4 L60 40 L96 50 L60 60 L50 96 L40 60 L4 50 L40 40 Z" fill="#C2643F"/>
+      </svg>
+      <h1 class="welcome-title">How can Atlas help you today?</h1>
+      <p class="welcome-subtitle">I'm an operations copilot and research assistant. Pick a starter module below, or just start typing.</p>
+
+      <div class="welcome-grid">
+        <div class="welcome-card" onclick="triggerStarterModule('diagnose')">
+          <div class="welcome-card-icon"><i data-lucide="wrench"></i></div>
+          <div class="welcome-card-info"><h3>Equipment fault diagnosis</h3><p>Assess anomalies, check safety SOPs, and recommend mitigations.</p></div>
+        </div>
+        <div class="welcome-card" onclick="triggerStarterModule('slides')">
+          <div class="welcome-card-icon"><i data-lucide="presentation"></i></div>
+          <div class="welcome-card-info"><h3>Create slide deck</h3><p>Generate structured, interactive presentation slides on any topic.</p></div>
+        </div>
+        <div class="welcome-card" onclick="triggerStarterModule('poster')">
+          <div class="welcome-card-icon"><i data-lucide="award"></i></div>
+          <div class="welcome-card-info"><h3>Research poster creator</h3><p>Analyze academic papers and lay out a multi-column poster.</p></div>
+        </div>
+        <div class="welcome-card" onclick="triggerStarterModule('scada')">
+          <div class="welcome-card-icon"><i data-lucide="sliders"></i></div>
+          <div class="welcome-card-info"><h3>SCADA alert room</h3><p>Simulate IoT sensor warnings and verify safety clearances.</p></div>
+        </div>
+      </div>
+    `;
+    messagesContainer.appendChild(welcome);
+    lucide.createIcons();
+  }
+
+  window.triggerStarterModule = function(moduleName) {
+    if (moduleName === 'diagnose') {
+      composerInput.value = "Check safety SOP logs for the equipment and diagnose the fault. Symptom reported: motor high temperature alert. Recommend intermediate mitigations.";
+    } else if (moduleName === 'slides') {
+      composerInput.value = "Generate a 4-slide presentation detailing the concept of: [Your Topic Here]. Include slide titles, bullet points, and key takeaways.";
+    } else if (moduleName === 'poster') {
+      composerInput.value = "Analyze the research paper [Insert Title/Abstract] and layout a scientific poster with Abstract, Methodology, Results, and References sections.";
+      hiddenFileInput.click();
+    } else if (moduleName === 'scada') {
+      document.querySelector('.scada-simulator-box').scrollIntoView({ behavior: 'smooth' });
+      composerInput.value = "Review the SCADA warning signals: conveyor belt speed drop. Check safety rules.";
+    }
+    handleComposerResize();
+    composerInput.focus();
+  };
+
+  async function loadThreadHistory(threadId) {
+    clearMessageViewport();
+    isThinking = false;
+
+    const threadObj = threads.find(t => t.thread_id === threadId);
+    const isSoftDeleted = threadObj && !!threadObj.deleted_at;
+
+    if (isSoftDeleted) {
+      const banner = document.createElement('div');
+      banner.className = 'deleted-thread-banner';
+      banner.style = 'background: rgba(178,59,46,0.1); border: 1px solid rgba(178,59,46,0.25); border-radius: 12px; padding: 14px 18px; margin: 0 20px 20px 20px; font-size: 0.88rem; color: var(--danger); display: flex; align-items: center; justify-content: space-between;';
+      banner.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="alert-triangle" style="width:16px; height:16px;"></i>
+          <span>This chat is soft-deleted and will be purged permanently after 30 days.</span>
+        </div>
+        <button class="btn-open-artifact" id="btn-restore-banner" style="padding: 4px 10px; font-size: 0.75rem;">Restore</button>
+      `;
+      messagesContainer.appendChild(banner);
+      
+      banner.querySelector('#btn-restore-banner').addEventListener('click', async () => {
+        try {
+          const res = await fetch(`/threads/${encodeURIComponent(threadId)}/restore`, { method: 'POST' });
+          if (res.ok) {
+            await refreshThreadsList();
+            await selectThread(threadId);
+          }
+        } catch (err) { console.error(err); }
+      });
+      lucide.createIcons();
+    }
+
+    try {
+      const res = await fetch(`/history/${encodeURIComponent(threadId)}`);
+      if (!res.ok) throw new Error('History request failed');
+      const data = await res.json();
+      const historyMsgs = data.messages || [];
+
+      if (historyMsgs.length === 0) {
+        showWelcomeScreen();
+        valIntent.textContent = 'n/a';
+        valEscalation.textContent = 'false';
+      } else {
+        historyMsgs.forEach(m => appendMessageHTML(m.role, m.content));
+        scrollToBottom();
+
+        const assistantMsgs = historyMsgs.filter(m => m.role === 'assistant');
+        if (assistantMsgs.length > 0) {
+          const last = assistantMsgs[assistantMsgs.length - 1].content;
+          const escMatch = last.match(/## Escalation\s*\n\s*-\s*(Yes|No)/i);
+          if (escMatch) valEscalation.textContent = escMatch[1].trim().toLowerCase() === 'yes' ? 'true' : 'false';
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      appendMessageHTML('tool', 'Failed to load history context.');
+    }
+  }
+
+  function createSlidePlayerHTML(title, slides) {
+    let cardsHTML = '';
+    let dotsHTML = '';
+
+    slides.forEach((slide, idx) => {
+      const activeClass = idx === 0 ? 'active' : '';
+      const slideBody = `<div class="slide-body-text" style="color:var(--text-main);font-size:1.02rem;line-height:1.7;width:100%;">${marked.parse(slide.content)}</div>`;
+
+      cardsHTML += `
+        <div class="slide-card ${activeClass}" data-slide-index="${idx}">
+          <span class="slide-number-indicator">Slide ${idx + 1} of ${slides.length}</span>
+          <h2 class="slide-title-header">${escapeHTML(slide.title)}</h2>
+          <div class="slide-body-content">${slideBody}</div>
+        </div>
+      `;
+      dotsHTML += `<span class="slide-dot ${activeClass}" data-slide-index="${idx}" onclick="setSlide(${idx})"></span>`;
+    });
+
+    window.currentSlideIndex = 0;
+    window.totalSlidesCount = slides.length;
+
+    window.setSlide = function(idx) {
+      window.currentSlideIndex = idx;
+      const cards = document.querySelectorAll('.slide-card');
+      const dots = document.querySelectorAll('.slide-dot');
+      cards.forEach((card, i) => card.classList.toggle('active', i === idx));
+      dots.forEach((dot, i) => dot.classList.toggle('active', i === idx));
+      const prevBtn = document.getElementById('slide-prev-btn');
+      const nextBtn = document.getElementById('slide-next-btn');
+      if (prevBtn) prevBtn.disabled = idx === 0;
+      if (nextBtn) nextBtn.disabled = idx === window.totalSlidesCount - 1;
+    };
+
+    window.prevSlide = function() { if (window.currentSlideIndex > 0) window.setSlide(window.currentSlideIndex - 1); };
+    window.nextSlide = function() { if (window.currentSlideIndex < window.totalSlidesCount - 1) window.setSlide(window.currentSlideIndex + 1); };
+
+    return `
+      <div class="slide-deck-container" id="slide-deck-player">
+        ${cardsHTML}
+        <div class="slide-player-controls">
+          <button class="slide-ctrl-btn" id="slide-prev-btn" onclick="prevSlide()" disabled>
+            <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Prev
+          </button>
+          <div class="slide-indicator-dots">${dotsHTML}</div>
+          <button class="slide-ctrl-btn" id="slide-next-btn" onclick="nextSlide()" ${slides.length <= 1 ? 'disabled' : ''}>
+            Next <i data-lucide="arrow-right" style="width:14px;height:14px;"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  function createPosterHTML(title, authors, domain, sections) {
+    let col1HTML = '', col2HTML = '', col3HTML = '';
+    sections.forEach((sec, idx) => {
+      const cardHTML = `
+        <div class="poster-card">
+          <h3 class="poster-card-title">${escapeHTML(sec.title)}</h3>
+          <div class="poster-card-content">${marked.parse(sec.content)}</div>
+        </div>
+      `;
+      if (idx % 3 === 0) col1HTML += cardHTML;
+      else if (idx % 3 === 1) col2HTML += cardHTML;
+      else col3HTML += cardHTML;
+    });
+
+    return `
+      <div class="poster-board">
+        <div class="poster-header">
+          <span class="poster-domain">${escapeHTML(domain || 'Scientific Research')}</span>
+          <h1 class="poster-title-text">${escapeHTML(title)}</h1>
+          <div class="poster-authors">${escapeHTML(authors || 'Lead Researcher')}</div>
+        </div>
+        <div class="poster-grid">
+          <div class="poster-column">${col1HTML}</div>
+          <div class="poster-column">${col2HTML}</div>
+          <div class="poster-column">${col3HTML}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function appendMessageHTML(role, content) {
+    const welcome = document.querySelector('.welcome-container');
+    if (welcome) welcome.remove();
+
+    const row = document.createElement('div');
+    row.className = `message-row ${role}`;
+
+    const avatarLabel = role === 'user' ? 'U' : role === 'assistant' ? 'A' : 'T';
+
+    let bodyHTML = role === 'assistant' ? marked.parse(content) : `<p>${escapeHTML(content)}</p>`;
+
+    let controlsHTML = '';
+    if (role === 'assistant') {
+      controlsHTML = `
+        <div class="message-controls">
+          <button class="btn-message-control read-aloud" title="Read response aloud">
+            <i data-lucide="volume-2" style="width:14px;height:14px;"></i>
+            <span>Listen</span>
+          </button>
+        </div>
+      `;
+    }
+
+    row.innerHTML = `
+      <div class="message-avatar" title="${role}">${avatarLabel}</div>
+      <div class="message-bubble">
+        <div class="message-content">${bodyHTML}</div>
+        ${controlsHTML}
+      </div>
+    `;
+
+    messagesContainer.appendChild(row);
+
+    if (role === 'assistant' && content) {
+      finalizeAssistantMessage(row, content);
+    }
+
+    lucide.createIcons();
+    scrollToBottom();
+    return row;
+  }
+
+  function finalizeAssistantMessage(row, content) {
+    const bodyHTML = marked.parse(content);
+    const contentArea = row.querySelector('.message-content');
+    contentArea.innerHTML = bodyHTML;
+
+    row.querySelectorAll('[data-downloadable="true"]').forEach((el) => {
+      if (el.parentElement.querySelector('.media-download-btn')) return;
+      const btn = document.createElement('button');
+      btn.className = 'btn-message-control media-download-btn';
+      btn.type = 'button';
+      btn.innerHTML = '<i data-lucide="download" style="width:14px;height:14px;"></i><span>Download</span>';
+      btn.addEventListener('click', async () => {
+        const src = el.getAttribute('src');
+        const res = await fetch(`/download/asset?url=${encodeURIComponent(src)}`);
+        if (!res.ok) { alert('Download failed.'); return; }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = src.split('/').pop();
+        document.body.appendChild(a); a.click(); a.remove();
+        window.URL.revokeObjectURL(url);
+      });
+      el.insertAdjacentElement('afterend', btn);
+    });
+
+    const preBlocks = row.querySelectorAll('pre');
+    preBlocks.forEach((pre) => {
+      const codeElement = pre.querySelector('code');
+      const text = codeElement ? codeElement.innerText : '';
+
+      let lang = 'code';
+      if (codeElement && codeElement.className) {
+        const match = codeElement.className.match(/language-(\w+)/);
+        if (match) lang = match[1];
+      }
+
+      if (pre.querySelector('.code-block-header')) return;
+
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `
+        <span>${lang}</span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-copy-code cta-view-canvas" type="button"><i data-lucide="eye" style="width:12px;height:12px;"></i> View canvas</button>
+          <button class="btn-copy-code cta-copy" type="button"><i data-lucide="copy" style="width:12px;height:12px;"></i> Copy</button>
+        </div>
+      `;
+      pre.insertBefore(header, pre.firstChild);
+
+      header.querySelector('.cta-view-canvas').addEventListener('click', () => {
+        openCanvasPanel(text, `${lang.toUpperCase()} code snippet`);
+      });
+
+      header.querySelector('.cta-copy').addEventListener('click', async (e) => {
+        try {
+          await navigator.clipboard.writeText(text);
+          const btn = e.currentTarget;
+          btn.innerHTML = `<i data-lucide="check" style="width:12px;height:12px;color:var(--success);"></i> Copied!`;
+          lucide.createIcons();
+          setTimeout(() => {
+            btn.innerHTML = `<i data-lucide="copy" style="width:12px;height:12px;"></i> Copy`;
+            lucide.createIcons();
+          }, 2000);
+        } catch (err) { console.error(err); }
+      });
+    });
+
+    if (!row.querySelector('.artifact-cta-card')) {
+      if (content.includes('## Summary') || content.includes('## Findings') || content.includes('## Recommendation')) {
+        const cta = document.createElement('div');
+        cta.className = 'artifact-cta-card';
+        cta.innerHTML = `
+          <div class="artifact-cta-info">
+            <i data-lucide="file-text" style="color:var(--accent-primary);"></i>
+            <div style="font-size:.8rem;"><strong>Structured report generated</strong><br><span style="color:var(--text-muted);">Open in canvas for split-screen editing.</span></div>
+          </div>
+          <button class="btn-open-artifact" type="button">Open in canvas</button>
+        `;
+        cta.querySelector('.btn-open-artifact').addEventListener('click', () => {
+          openCanvasPanel(bodyHTML, 'Operations diagnostic report', true);
+        });
+        row.querySelector('.message-bubble').insertBefore(cta, row.querySelector('.message-bubble').lastElementChild);
+      }
+
+      const presTagMatch = content.match(/<presentation([\s\S]*?)>([\s\S]*?)<\/presentation>/i);
+      if (presTagMatch) {
+        const attrs = presTagMatch[1];
+        const slidesBlock = presTagMatch[2];
+
+        let title = "Presentation";
+        const titleMatch = attrs.match(/title=["']([^"']+)["']/i);
+        if (titleMatch) title = titleMatch[1];
+
+        const slides = [];
+        const slideRegex = /<slide([\s\S]*?)>([\s\S]*?)<\/slide>/gi;
+        let slideMatch;
+        while ((slideMatch = slideRegex.exec(slidesBlock)) !== null) {
+          const sAttrs = slideMatch[1];
+          const sContent = slideMatch[2];
+          let sTitle = "Slide";
+          const sTitleMatch = sAttrs.match(/title=["']([^"']+)["']/i);
+          if (sTitleMatch) sTitle = sTitleMatch[1];
+          slides.push({ title: sTitle, content: sContent });
+        }
+
+        if (slides.length > 0) {
+          const cta = document.createElement('div');
+          cta.className = 'artifact-cta-card';
+          cta.innerHTML = `
+            <div class="artifact-cta-info">
+              <i data-lucide="presentation" style="color:var(--accent-secondary);"></i>
+              <div style="font-size:.8rem;"><strong>Slide deck ready</strong><br><span style="color:var(--text-muted);">${slides.length} slides generated. Click to present.</span></div>
+            </div>
+            <button class="btn-open-artifact" type="button">Open slides</button>
+          `;
+          cta.querySelector('.btn-open-artifact').addEventListener('click', () => {
+            currentDownloadKind = 'pptx';
+            document.getElementById('canvas-download').style.display = 'flex';
+            openCanvasPanel(createSlidePlayerHTML(title, slides), title, true);
+            lucide.createIcons();
+          });
+          row.querySelector('.message-bubble').insertBefore(cta, row.querySelector('.message-bubble').lastElementChild);
+        }
+      }
+
+      const posterTagMatch = content.match(/<poster([\s\S]*?)>([\s\S]*?)<\/poster>/i);
+      if (posterTagMatch) {
+        const attrs = posterTagMatch[1];
+        const sectionsBlock = posterTagMatch[2];
+
+        let title = "Research Poster", authors = "Lead Researcher", domain = "Scientific Domain";
+        const titleM = attrs.match(/title=["']([^"']+)["']/i);
+        if (titleM) title = titleM[1];
+        const authorsM = attrs.match(/authors=["']([^"']+)["']/i);
+        if (authorsM) authors = authorsM[1];
+        const domainM = attrs.match(/domain=["']([^"']+)["']/i);
+        if (domainM) domain = domainM[1];
+
+        const sections = [];
+        const secRegex = /<section([\s\S]*?)>([\s\S]*?)<\/section>/gi;
+        let secMatch;
+        while ((secMatch = secRegex.exec(sectionsBlock)) !== null) {
+          const secAttrs = secMatch[1];
+          const secContent = secMatch[2];
+          let secTitle = "Section";
+          const secTitleMatch = secAttrs.match(/title=["']([^"']+)["']/i);
+          if (secTitleMatch) secTitle = secTitleMatch[1];
+          sections.push({ title: secTitle, content: secContent });
+        }
+
+        if (sections.length > 0) {
+          const cta = document.createElement('div');
+          cta.className = 'artifact-cta-card';
+          cta.innerHTML = `
+            <div class="artifact-cta-info">
+              <i data-lucide="award" style="color:var(--success);"></i>
+              <div style="font-size:.8rem;"><strong>Research poster formatted</strong><br><span style="color:var(--text-muted);">Scientific layout ready in canvas workspace.</span></div>
+            </div>
+            <button class="btn-open-artifact" type="button">View poster</button>
+          `;
+          cta.querySelector('.btn-open-artifact').addEventListener('click', () => {
+            currentDownloadKind = 'poster-pdf';
+            document.getElementById('canvas-download').style.display = 'flex';
+            openCanvasPanel(createPosterHTML(title, authors, domain, sections), title, true);
+            lucide.createIcons();
+          });
+          row.querySelector('.message-bubble').insertBefore(cta, row.querySelector('.message-bubble').lastElementChild);
+        }
+      }
+    }
+
+    parseAndRenderCharts(contentArea);
+
+    const listenBtn = row.querySelector('.read-aloud');
+    if (listenBtn) {
+      const newListenBtn = listenBtn.cloneNode(true);
+      listenBtn.parentNode.replaceChild(newListenBtn, listenBtn);
+      newListenBtn.addEventListener('click', () => toggleReadAloud(content, newListenBtn));
+    }
+    lucide.createIcons();
+  }
+
+  function parseAndRenderCharts(container) {
+    const charts = container.querySelectorAll('chart');
+    charts.forEach(chartTag => {
+      const type = chartTag.getAttribute('type') || 'line';
+      const title = chartTag.getAttribute('title') || 'Chart';
+      const labelsAttr = chartTag.getAttribute('labels') || '';
+      const dataAttr = chartTag.getAttribute('data') || '';
+
+      const labels = labelsAttr.split(',').map(s => s.trim());
+      const data = dataAttr.split(',').map(s => parseFloat(s.trim()));
+
+      const chartWrapper = document.createElement('div');
+      chartWrapper.className = 'chart-container-box';
+
+      const canvas = document.createElement('canvas');
+      canvas.style.width = '100%';
+      canvas.style.maxHeight = '240px';
+      chartWrapper.appendChild(canvas);
+
+      chartTag.parentNode.replaceChild(chartWrapper, chartTag);
+
+      new Chart(canvas, {
+        type: type,
+        data: {
+          labels: labels,
+          datasets: [{
+            label: title, data: data,
+            borderColor: '#C2643F',
+            backgroundColor: 'rgba(194, 100, 63, 0.12)',
+            borderWidth: 2, tension: 0.3, fill: true
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#28221A' } } },
+          scales: {
+            x: { grid: { color: 'rgba(31,27,22,0.06)' }, ticks: { color: '#7C7264' } },
+            y: { grid: { color: 'rgba(31,27,22,0.06)' }, ticks: { color: '#7C7264' } }
+          }
+        }
+      });
+    });
+  }
+
+  function openCanvasPanel(content, title, isHTML = false) {
+    activeCanvasContent = content;
+    activeCanvasTitle = title;
+    canvasTitleText.textContent = title;
+
+    if (content && (content.includes('slide-deck-container') || content.includes('poster-board'))) {
+      canvasPanel.classList.add('wide-mode');
+    } else {
+      canvasPanel.classList.remove('wide-mode');
+    }
+
+    if (isHTML) {
+      canvasBodyContent.innerHTML = content;
+    } else {
+      canvasBodyContent.innerHTML = `<pre style="background:#211D17 !important;border-radius:12px;padding:16px;overflow:auto;"><code class="hljs" style="background:transparent;padding:0;">${escapeHTML(content)}</code></pre>`;
+      hljs.highlightElement(canvasBodyContent.querySelector('code'));
+    }
+
+    canvasPanel.classList.add('active');
+  }
+
+  function closeCanvasPanel() {
+    canvasPanel.classList.remove('active');
+    canvasPanel.classList.remove('wide-mode');
+    canvasPanel.style.width = '';
+    document.body.classList.remove('fullscreen-canvas');
+    currentDownloadKind = null;
+    const dl = document.getElementById('canvas-download');
+    if (dl) dl.style.display = 'none';
+  }
+
+  async function copyCanvasContent() {
+    try {
+      const textToCopy = canvasBodyContent.innerText || canvasBodyContent.textContent;
+      await navigator.clipboard.writeText(textToCopy);
+      canvasCopy.innerHTML = `<i data-lucide="check" style="width:15px;height:15px;color:var(--success);"></i>`;
+      lucide.createIcons();
+      setTimeout(() => {
+        canvasCopy.innerHTML = `<i data-lucide="copy" style="width:15px;height:15px;"></i>`;
+        lucide.createIcons();
+      }, 1500);
+    } catch (err) { console.error(err); }
+  }
+
+  function toggleCanvasFullscreen() {
+    const isExpanded = canvasPanel.style.width === '100vw';
+    if (isExpanded) {
+      canvasPanel.style.width = canvasPanel.classList.contains('wide-mode') ? '80%' : '45%';
+      canvasFullscreen.innerHTML = `<i data-lucide="maximize-2" style="width:15px;height:15px;"></i>`;
+    } else {
+      canvasPanel.style.width = '100vw';
+      canvasFullscreen.innerHTML = `<i data-lucide="minimize-2" style="width:15px;height:15px;"></i>`;
+    }
+    lucide.createIcons();
+  }
+
+  function escapeHTML(str) {
+    return str.replace(/[&<>'"]/g, tag => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[tag] || tag));
+  }
+
+  function handleViewportScroll() {
+    const scrollPos = messagesViewport.scrollTop;
+    const scrollHeight = messagesViewport.scrollHeight;
+    const clientHeight = messagesViewport.clientHeight;
+    if (scrollHeight - scrollPos - clientHeight > 300) btnScrollBottom.classList.add('visible');
+    else btnScrollBottom.classList.remove('visible');
+  }
+
+  function scrollToBottom() {
+    messagesViewport.scrollTo({ top: messagesViewport.scrollHeight, behavior: 'smooth' });
+  }
+
+  function handleComposerResize() {
+    composerInput.style.height = 'auto';
+    composerInput.style.height = (composerInput.scrollHeight - 6) + 'px';
+    btnSendMessage.disabled = composerInput.value.trim().length === 0 && attachmentsList.length === 0;
+  }
+
+  async function handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    btnUploadFile.disabled = true;
+    btnUploadFile.innerHTML = `<span style="font-size:.75rem;color:var(--accent-primary);">…</span>`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/upload', { method: 'POST', body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        attachmentsList.push(data);
+        renderAttachmentPreviewBar();
+      } else {
+        alert('Upload failed.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('File upload server error.');
+    } finally {
+      btnUploadFile.disabled = false;
+      btnUploadFile.innerHTML = `<i data-lucide="paperclip" style="width:17px;height:17px;"></i>`;
+      lucide.createIcons();
+      handleComposerResize();
+      hiddenFileInput.value = '';
+    }
+  }
+
+  function renderAttachmentPreviewBar() {
+    if (attachmentsList.length === 0) {
+      attachmentPreviewBar.style.display = 'none';
+      attachmentPreviewBar.innerHTML = '';
+      return;
+    }
+
+    attachmentPreviewBar.style.display = 'flex';
+    attachmentPreviewBar.innerHTML = '';
+
+    attachmentsList.forEach((att, index) => {
+      const card = document.createElement('div');
+      card.className = 'attachment-preview-card';
+
+      let iconHTML = `<i data-lucide="file" style="width:16px;"></i>`;
+      if (att.type === 'image') iconHTML = `<img src="${att.url}" alt="preview">`;
+      else if (att.type === 'audio') iconHTML = `<i data-lucide="volume-2" style="width:16px;"></i>`;
+      else if (att.type === 'video') iconHTML = `<i data-lucide="video" style="width:16px;"></i>`;
+      else if (att.filename && att.filename.toLowerCase().endsWith('.pdf')) iconHTML = `<i data-lucide="file-text" style="width:16px;color:var(--danger);"></i>`;
+
+      card.innerHTML = `
+        ${iconHTML}
+        <span>${att.filename || 'Attachment'}</span>
+        <button type="button" class="btn-remove-attachment" title="Remove"><i data-lucide="x" style="width:10px;height:10px;"></i></button>
+      `;
+
+      card.querySelector('.btn-remove-attachment').addEventListener('click', () => {
+        attachmentsList.splice(index, 1);
+        renderAttachmentPreviewBar();
+        handleComposerResize();
+      });
+
+      attachmentPreviewBar.appendChild(card);
+    });
+    lucide.createIcons();
+  }
+
+  function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) { btnVoiceDictate.style.display = 'none'; return; }
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => { isVoiceDictating = true; btnVoiceDictate.classList.add('listening'); };
+    recognition.onerror = (e) => { console.error('Speech recognition error', e); isVoiceDictating = false; btnVoiceDictate.classList.remove('listening'); };
+    recognition.onend = () => { isVoiceDictating = false; btnVoiceDictate.classList.remove('listening'); };
+    recognition.onresult = (e) => {
+      const resultText = e.results[0][0].transcript;
+      composerInput.value = (composerInput.value + ' ' + resultText).trim();
+      handleComposerResize();
+      composerInput.focus();
+    };
+  }
+
+  function toggleVoiceDictation() {
+    if (!recognition) return;
+    if (isVoiceDictating) {
+      recognition.stop();
+    } else {
+      const selectLang = document.getElementById('select-lang').value;
+      const langMap = { auto:'en-US', en:'en-US', hi:'hi-IN', gu:'gu-IN', ta:'ta-IN', te:'te-IN', kn:'kn-IN', ml:'ml-IN', bn:'bn-IN', mr:'mr-IN' };
+      recognition.lang = langMap[selectLang] || 'en-US';
+      recognition.start();
+    }
+  }
+
+  function toggleReadAloud(text, buttonElement) {
+    const cleanText = text.replace(/#+\s+/g, '').replace(/\*+/g, '').replace(/`+/g, '');
+
+    if (currentSpeechUtterance) {
+      stopReadAloud();
+      if (buttonElement.dataset.speaking === 'true') return;
+    }
+
+    const icon = buttonElement.querySelector('i');
+    const span = buttonElement.querySelector('span');
+
+    currentSpeechUtterance = new SpeechSynthesisUtterance(cleanText);
+
+    currentSpeechUtterance.onstart = () => {
+      buttonElement.dataset.speaking = 'true';
+      buttonElement.style.color = 'var(--accent-primary)';
+      span.textContent = 'Stop';
+      icon.setAttribute('data-lucide', 'square');
+      lucide.createIcons();
+    };
+
+    currentSpeechUtterance.onend = () => {
+      buttonElement.dataset.speaking = 'false';
+      buttonElement.style.color = '';
+      span.textContent = 'Listen';
+      icon.setAttribute('data-lucide', 'volume-2');
+      lucide.createIcons();
+      currentSpeechUtterance = null;
+    };
+
+    currentSpeechUtterance.onerror = () => {
+      buttonElement.dataset.speaking = 'false';
+      buttonElement.style.color = '';
+      span.textContent = 'Listen';
+      icon.setAttribute('data-lucide', 'volume-2');
+      lucide.createIcons();
+      currentSpeechUtterance = null;
+    };
+
+    window.speechSynthesis.speak(currentSpeechUtterance);
+  }
+
+  function stopReadAloud() {
+    window.speechSynthesis.cancel();
+    document.querySelectorAll('.read-aloud').forEach(btn => {
+      btn.dataset.speaking = 'false';
+      btn.style.color = '';
+      btn.querySelector('span').textContent = 'Listen';
+      btn.querySelector('i').setAttribute('data-lucide', 'volume-2');
+    });
+    lucide.createIcons();
+    currentSpeechUtterance = null;
+  }
+
+  async function handleChatSubmit(e) {
+    e.preventDefault();
+    const messageText = composerInput.value.trim();
+    if (!messageText && attachmentsList.length === 0) return;
+    if (isThinking) return;
+
+    composerInput.value = '';
+    composerInput.style.height = 'auto';
+    btnSendMessage.disabled = true;
+
+    const currentAttachments = [...attachmentsList];
+    attachmentsList = [];
+    renderAttachmentPreviewBar();
+
+    appendMessageHTML('user', messageText);
+    const userBubble = messagesContainer.lastChild.querySelector('.message-bubble');
+
+    currentAttachments.forEach(att => {
+      let renderNode = null;
+      if (att.type === 'image') { renderNode = document.createElement('img'); renderNode.src = att.url; renderNode.className = 'attachment-render image'; }
+      else if (att.type === 'audio') { renderNode = document.createElement('audio'); renderNode.src = att.url; renderNode.controls = true; renderNode.className = 'attachment-render audio'; }
+      else if (att.type === 'video') { renderNode = document.createElement('video'); renderNode.src = att.url; renderNode.controls = true; renderNode.className = 'attachment-render video'; }
+      else {
+        renderNode = document.createElement('a');
+        renderNode.href = att.url; renderNode.target = '_blank';
+        renderNode.textContent = `📎 Download ${att.filename || 'File'}`;
+        renderNode.style.display = 'block'; renderNode.style.margin = '8px 0';
+      }
+      userBubble.insertBefore(renderNode, userBubble.lastChild);
+    });
+
+    showThinkingIndicator();
+    isThinking = true;
+
+    try {
+      const selectedLang = document.getElementById('select-lang').value;
+      const res = await fetch('/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thread_id: activeThreadId, message: messageText, attachments: currentAttachments, language: selectedLang })
+      });
+
+      if (res.status === 403) throw new Error('Forbidden access to this conversation thread.');
+      if (!res.ok) { const errData = await res.json().catch(() => ({})); throw new Error(errData.error?.message || errData.detail || 'Service error'); }
+
+      removeThinkingIndicator();
+
+      const assistantRow = appendMessageHTML('assistant', '');
+      const assistantContentArea = assistantRow.querySelector('.message-content');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let replyText = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        let currentEvent = '';
+        for (const line of lines) {
+          const cleanLine = line.trim();
+          if (!cleanLine) continue;
+          if (cleanLine.startsWith('event:')) {
+            currentEvent = cleanLine.substring(6).trim();
+          } else if (cleanLine.startsWith('data:')) {
+            const dataVal = cleanLine.substring(5).trim();
+            if (currentEvent === 'token') {
+              replyText = dataVal.replace(/\\n/g, '\n');
+              assistantContentArea.innerHTML = marked.parse(replyText);
+              scrollToBottom();
+            } else if (currentEvent === 'done') {
+              const payload = JSON.parse(dataVal);
+              if (!replyText) {
+                replyText = payload.reply;
+                assistantContentArea.innerHTML = marked.parse(replyText);
+              }
+              valIntent.textContent = payload.intent || 'n/a';
+              valEscalation.textContent = String(Boolean(payload.needs_escalation));
+
+              finalizeAssistantMessage(assistantRow, replyText);
+            } else if (currentEvent === 'error') {
+              const errPayload = JSON.parse(dataVal);
+              assistantContentArea.innerHTML = '<span style="color:var(--danger);">Error: ' + escapeHTML(errPayload.detail || 'Chat failed') + '</span>';
+            }
+          }
+        }
+      }
+
+      await refreshThreadsList();
+    } catch (err) {
+      console.error(err);
+      removeThinkingIndicator();
+      appendMessageHTML('tool', 'Failed response: ' + err.message);
+    } finally {
+      isThinking = false;
+    }
+  }
+
+  async function triggerSimulation(type) {
+    stopReadAloud();
+    closeCanvasPanel();
+
+    let threadTitle = "", systemLog = "", userPrompt = "";
+
+    if (type === 'leak') {
+      threadTitle = "🚨 Alarm: Press-1 fluid leak";
+      systemLog = "[SCADA TELEMETRY WARNING]\nTag: H_PRESS_01_FLUID_LEVEL\nValue: 12% (CRITICAL LOW)\nAlarm Status: ACTIVE\nLOTO status: UNLOCKED";
+      userPrompt = "SCADA Alarm alert received: hydraulic-press-1 fluid level is critical. Check equipment status, safety protocol, LOTO procedures, and raise a ticket.";
+    } else if (type === 'trip') {
+      threadTitle = "🚨 Alarm: Belt-3 motor trip";
+      systemLog = "[SCADA TELEMETRY WARNING]\nTag: C_BELT_03_MOTOR_TEMP\nValue: 104°C (TRIP LIMIT EXCEEDED)\nMotor Status: STOPPED\nAlarm Status: TRIPPED";
+      userPrompt = "Conveyor belt 3 motor temperature exceeded trip limit. Perform equipment checks, search safety rules, calculate load coefficient, and create a ticket.";
+    } else {
+      threadTitle = "🚨 Alarm: Pump-2 temp high";
+      systemLog = "[SCADA TELEMETRY WARNING]\nTag: C_PUMP_02_COOLANT_TEMP\nValue: 92°C (HIGH ALARM)\nFlow Rate: 12 L/min (SOP requires 40-60)\nAlarm Status: ACTIVE";
+      userPrompt = "Cooling Pump 2 temperature high and flow rate is too low. Review equipment details, search LOTO guidelines, and escalate.";
+    }
+
+    const newThreadId = "alert-" + Date.now();
+    activeThreadId = newThreadId;
+    localStorage.setItem('active-thread-id', newThreadId);
+
+    clearMessageViewport();
+    currentThreadTitleText.textContent = threadTitle;
+
+    const welcome = document.querySelector('.welcome-container');
+    if (welcome) welcome.remove();
+
+    const alertRow = document.createElement('div');
+    alertRow.className = 'message-row tool';
+    alertRow.innerHTML = `
+      <div class="message-avatar">SYS</div>
+      <div class="message-bubble" style="background:rgba(178,59,46,0.06);border-color:rgba(178,59,46,0.25);color:var(--danger);">
+        <div class="message-content">
+          <p><strong>🚨 Critical system alarm</strong></p>
+          <pre style="background:#211D17 !important;color:#F5B8AC;font-family:var(--font-mono);border:none;padding:12px;margin-top:8px;border-radius:10px;">${systemLog}</pre>
+        </div>
+      </div>
+    `;
+    messagesContainer.appendChild(alertRow);
+
+    showThinkingIndicator();
+    isThinking = true;
+
+    try {
+      const res = await fetch('/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thread_id: activeThreadId, message: userPrompt, attachments: [] })
+      });
+
+      if (!res.ok) { const errData = await res.json().catch(() => ({})); throw new Error(errData.detail || 'Service error'); }
+
+      removeThinkingIndicator();
+
+      appendMessageHTML('user', userPrompt);
+
+      const assistantRow = appendMessageHTML('assistant', '');
+      const assistantContentArea = assistantRow.querySelector('.message-content');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let replyText = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        let currentEvent = '';
+        for (const line of lines) {
+          const cleanLine = line.trim();
+          if (!cleanLine) continue;
+          if (cleanLine.startsWith('event:')) {
+            currentEvent = cleanLine.substring(6).trim();
+          } else if (cleanLine.startsWith('data:')) {
+            const dataVal = cleanLine.substring(5).trim();
+            if (currentEvent === 'token') {
+              replyText = dataVal.replace(/\\n/g, '\n');
+              assistantContentArea.innerHTML = marked.parse(replyText);
+              scrollToBottom();
+            } else if (currentEvent === 'done') {
+              const payload = JSON.parse(dataVal);
+              if (!replyText) {
+                replyText = payload.reply;
+                assistantContentArea.innerHTML = marked.parse(replyText);
+              }
+              valIntent.textContent = payload.intent || 'n/a';
+              valEscalation.textContent = String(Boolean(payload.needs_escalation));
+
+              finalizeAssistantMessage(assistantRow, replyText);
+            } else if (currentEvent === 'error') {
+              const errPayload = JSON.parse(dataVal);
+              assistantContentArea.innerHTML = '<span style="color:var(--danger);">Error: ' + escapeHTML(errPayload.detail || 'Alert response failed') + '</span>';
+            }
+          }
+        }
+      }
+
+      await refreshThreadsList();
+    } catch (err) {
+      console.error(err);
+      removeThinkingIndicator();
+      appendMessageHTML('tool', 'Failed to execute simulated alert response: ' + err.message);
+    } finally {
+      isThinking = false;
+    }
+  }
+
+  function showThinkingIndicator() {
+    const loader = document.createElement('div');
+    loader.className = 'message-row assistant thinking-loader';
+    loader.innerHTML = `
+      <div class="message-avatar">A</div>
+      <div class="message-bubble" style="padding:10px 2px;">
+        <div class="thinking-loader">
+          <div class="thinking-dot"></div>
+          <div class="thinking-dot"></div>
+          <div class="thinking-dot"></div>
+        </div>
+      </div>
+    `;
+    messagesContainer.appendChild(loader);
+    scrollToBottom();
+  }
+
+  function removeThinkingIndicator() {
+    const loader = document.querySelector('.thinking-loader');
+    if (loader) loader.remove();
+  }
+
+  async function resetCurrentThread() {
+    if (!confirm('Reset conversation? This clears history.')) return;
+    try {
+      const res = await fetch(`/reset/${encodeURIComponent(activeThreadId)}`, { method: 'POST' });
+      if (res.ok) {
+        clearMessageViewport();
+        showWelcomeScreen();
+        valIntent.textContent = 'n/a';
+        valEscalation.textContent = 'false';
+      }
+    } catch (err) { console.error(err); }
+  }
+
+  function buildPromptFromChips() {
+    const activeChips = Array.from(taskChips.querySelectorAll('.task-chip.active')).map(c => c.dataset.task);
+    const prompts = {
+      status: 'Check the equipment status for the item I mention and tell me the next step.',
+      sop: 'Explain the relevant SOP or safety procedure and summarize the key steps.',
+      calculate: 'Do the calculation I need and show the result clearly.',
+      ticket: 'If the issue cannot be resolved, create a support ticket and report the ticket details.',
+      summarize: 'Summarize the issue, findings, and what should happen next.'
+    };
+
+    if (activeChips.length === 0) { alert('Select one or more task chips first!'); return; }
+
+    let combined = '';
+    if (activeChips.length === 1) {
+      combined = prompts[activeChips[0]];
+    } else {
+      const bulletPoints = activeChips.map((task, i) => `${i + 1}. ${prompts[task]}`).join('\n');
+      combined = `Handle these requests together in one reply:\n${bulletPoints}\n\nUse separate sections for each part and keep it practical.`;
+    }
+
+    composerInput.value = combined;
+    handleComposerResize();
+    composerInput.focus();
+  }
+
+  function openPromptLibrary() { promptLibModal.classList.add('active'); renderPromptLibrary('all'); }
+  function closePromptLibrary() {
+    promptLibModal.classList.remove('active');
+    promptCompiler.style.display = 'none';
+    selectedTemplate = null;
+    btnConfirmPromptUse.disabled = true;
+  }
+
+  function renderPromptLibrary(cat) {
+    promptTemplatesList.innerHTML = '';
+    promptCompiler.style.display = 'none';
+    btnConfirmPromptUse.disabled = true;
+
+    const filtered = cat === 'all' ? promptTemplates : promptTemplates.filter(t => t.category === cat);
+
+    filtered.forEach(template => {
+      const card = document.createElement('div');
+      card.className = 'prompt-template-card';
+      card.innerHTML = `
+        <span class="prompt-template-title">${template.title}</span>
+        <span class="prompt-template-desc">${template.desc}</span>
+        <div class="prompt-template-content">${escapeHTML(template.content)}</div>
+      `;
+
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.prompt-template-card').forEach(c => c.style.borderColor = '');
+        card.style.borderColor = 'var(--accent-primary)';
+        selectPromptTemplate(template);
+      });
+
+      promptTemplatesList.appendChild(card);
+    });
+  }
+
+  function selectPromptTemplate(template) {
+    selectedTemplate = template;
+    promptVariablesGrid.innerHTML = '';
+
+    const varRegex = /\[(.*?)\]/g;
+    let match;
+    const variables = [];
+
+    while ((match = varRegex.exec(template.content)) !== null) {
+      if (!variables.includes(match[1])) variables.push(match[1]);
+    }
+
+    if (variables.length === 0) {
+      promptCompiler.style.display = 'none';
+      btnConfirmPromptUse.disabled = false;
+      return;
+    }
+
+    promptCompiler.style.display = 'flex';
+    btnConfirmPromptUse.disabled = false;
+
+    variables.forEach(variable => {
+      const field = document.createElement('div');
+      field.className = 'var-field';
+      field.innerHTML = `
+        <label class="var-label">${variable}</label>
+        <input class="var-input" type="text" data-var="${variable}" placeholder="Enter ${variable.toLowerCase()}...">
+      `;
+      promptVariablesGrid.appendChild(field);
+    });
+  }
+
+  function compileAndInsertPrompt() {
+    if (!selectedTemplate) return;
+
+    let compiledText = selectedTemplate.content;
+    const inputs = promptVariablesGrid.querySelectorAll('.var-input');
+
+    inputs.forEach(input => {
+      const variable = input.dataset.var;
+      const val = input.value.trim() || `[${variable}]`;
+      compiledText = compiledText.split(`[${variable}]`).join(val);
+    });
+
+    composerInput.value = compiledText;
+    handleComposerResize();
+    closePromptLibrary();
+    composerInput.focus();
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

@@ -67,6 +67,10 @@ def build_graph(checkpointer=None):
 
     if checkpointer is None:
         conn = sqlite3.connect(settings.SQLITE_DB_PATH, check_same_thread=False)
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA cache_size=-64000;")
+        conn.execute("PRAGMA temp_store=MEMORY;")
         checkpointer = SqliteSaver(conn)
         logger.info(f"Using SQLite persistence at {settings.SQLITE_DB_PATH}")
 
