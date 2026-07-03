@@ -1,5 +1,7 @@
 # 🌌 Atlas Multimodal AI Portal (v3.0.0)
 
+**🌐 Live Demo:** [https://atlas-multimodal-ai-portal.onrender.com/](https://atlas-multimodal-ai-portal.onrender.com/)
+
 <p align="center">
   <img src="static/screenshots/login_screen.png" alt="Atlas Login Screen" width="800" />
 </p>
