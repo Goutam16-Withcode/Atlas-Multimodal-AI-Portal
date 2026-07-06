@@ -18,7 +18,13 @@ def main():
                          help="Conversation/thread ID (persists across restarts)")
     args = parser.parse_args()
 
-    config = {"configurable": {"thread_id": args.thread}}
+    config = {
+        "configurable": {"thread_id": args.thread},
+        "metadata": {
+            "thread_id": args.thread,
+            "interface": "cli"
+        }
+    }
     print(f"Atlas Industrial Support Bot — thread '{args.thread}'. Type 'exit' to quit.\n")
 
     while True:

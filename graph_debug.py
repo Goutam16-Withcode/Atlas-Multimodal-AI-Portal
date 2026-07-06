@@ -11,7 +11,15 @@ load_dotenv()
 from langchain_core.messages import HumanMessage
 from graph import chatbot
 
-config = {"configurable": {"thread_id": "debug-thread-image", "username": "debug_user", "language": "en"}}
+config = {
+    "configurable": {"thread_id": "debug-thread-image", "username": "debug_user", "language": "en"},
+    "metadata": {
+        "thread_id": "debug-thread-image",
+        "username": "debug_user",
+        "language": "en",
+        "interface": "debug"
+    }
+}
 
 print("Invoking full graph with an image request...\n")
 result = chatbot.invoke(

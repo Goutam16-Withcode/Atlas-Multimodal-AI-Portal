@@ -12,7 +12,7 @@ class Settings:
     # LLM
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     BACKUP_GROQ_API_KEY: str = os.getenv("BACKUP_GROQ_API_KEY", "")
-    MODEL_NAME: str = os.getenv("MODEL_NAME", "meta-llama/llama-4-scout-17b-16e-instruct")
+    MODEL_NAME: str = os.getenv("MODEL_NAME", "llama-3.3-70b-versatile")
     TEMPERATURE: float = float(os.getenv("TEMPERATURE", "0.0"))
 
     # Memory / checkpointing
@@ -46,6 +46,15 @@ class Settings:
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
+    # LangSmith Tracing
+    LANGCHAIN_TRACING_V2: str = os.getenv("LANGCHAIN_TRACING_V2", "false")
+    LANGCHAIN_ENDPOINT: str = os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
+    LANGCHAIN_API_KEY: str = os.getenv("LANGCHAIN_API_KEY", "")
+    LANGCHAIN_PROJECT: str = os.getenv("LANGCHAIN_PROJECT", "multitask-chatbot")
+
+    # Security
+    COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() == "true"
+
     @property
     def groq_api_keys(self) -> list:
         keys = []
@@ -64,3 +73,11 @@ class Settings:
 
 
 settings = Settings()
+
+# Propagate LangSmith environment variables to os.environ so LangChain/LangGraph pick them up automatically
+if settings.LANGCHAIN_TRACING_V2.lower() == "true":
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_ENDPOINT"] = settings.LANGCHAIN_ENDPOINT
+    if settings.LANGCHAIN_API_KEY:
+        os.environ["LANGCHAIN_API_KEY"] = settings.LANGCHAIN_API_KEY
+    os.environ["LANGCHAIN_PROJECT"] = settings.LANGCHAIN_PROJECT

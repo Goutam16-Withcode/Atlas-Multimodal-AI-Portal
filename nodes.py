@@ -33,9 +33,9 @@ def get_llm_instance(model_type="primary", bind_tools=True):
     if model_type == "primary":
         m = settings.MODEL_NAME
     elif model_type == "vision":
-        m = "meta-llama/llama-4-scout-17b-16e-instruct"
+        m = settings.MODEL_NAME
     else:
-        m = "llama-3.1-8b-instant"
+        m = settings.MODEL_NAME
 
     base_llm = ChatGroq(
         model=m,
@@ -49,7 +49,7 @@ def get_llm_instance(model_type="primary", bind_tools=True):
 
 tool_node = ToolNode(ALL_TOOLS)
 
-SYSTEM_PROMPT = """You are Atlas, an operations assistant supporting plant/industrial teams as well as general technical and knowledge work. You have access to tools for live equipment data, calculations, a knowledge base, image generation, video generation, and support ticketing. Use them — never guess.
+SYSTEM_PROMPT = """You are Atlas, an operations assistant supporting plant/industrial teams as well as general technical and knowledge work. You have access to tools for live equipment data, calculations, a knowledge base, image generation, video generation, support ticketing, real-time web search, stock market price lookups, weather forecasts, read-only SQL database querying, simulated email sending, calendar scheduling, task management, safe Python code execution, sending Slack messages, fetching GitHub issues/PRs, and comparing document similarity. Use them — never guess.
 
 ═══════════════════════════════════════
 TASK CLASSIFICATION
@@ -347,6 +347,43 @@ def agent_node(state: ChatState, config: RunnableConfig = None) -> dict:
         except Exception as e:
             err_msg = str(e)
             last_error = err_msg
+            
+            # Check if this is a Groq function calling parser failure
+            if "failed_generation" in err_msg:
+                import re
+                import html
+                import json
+                import uuid
+                
+                tag_match = re.search(r"failed_generation':\s*'([^']+)'", err_msg)
+                if not tag_match:
+                    tag_match = re.search(r'"failed_generation":\s*"([^"]+)"', err_msg)
+                
+                if tag_match:
+                    failed_gen = tag_match.group(1)
+                    name_match = re.search(r'name="([^"]+)"', failed_gen)
+                    params_match = re.search(r'parameters="([^"]+)"', failed_gen)
+                    if not params_match:
+                        params_match = re.search(r"parameters='([^']+)'", failed_gen)
+                        
+                    if name_match and params_match:
+                        tool_name = name_match.group(1)
+                        params_str = html.unescape(params_match.group(1))
+                        try:
+                            tool_args = json.loads(params_str)
+                        except Exception:
+                            tool_args = {}
+                            
+                        tool_call = {
+                            "name": tool_name,
+                            "args": tool_args,
+                            "id": "call_" + str(uuid.uuid4()).replace("-", ""),
+                            "type": "tool_call"
+                        }
+                        logger.info(f"Successfully intercepted and repaired Groq failed generation tool call: {tool_name}({tool_args})")
+                        response = AIMessage(content="", tool_calls=[tool_call])
+                        return {"messages": [response], "retry_count": 0, "error": None}
+
             retries += 1
             logger.warning(f"LLM call failed (attempt {retries}/{settings.MAX_LLM_RETRIES}): {e}")
 

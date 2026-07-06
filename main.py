@@ -266,12 +266,12 @@ def base64url_decode(data: str) -> bytes:
     return base64.urlsafe_b64decode(data + padding)
 
 
-def issue_session_token(username: str, ttl_seconds: int) -> str:
+def issue_session_token(username: str, ttl_seconds: int, session_id: str) -> str:
     header = {"alg": JWT_ALGO, "typ": "JWT"}
     now = int(time.time())
     payload = {
         "sub": username,
-        "jti": str(uuid.uuid4()),
+        "jti": session_id,
         "iat": now,
         "exp": now + ttl_seconds,
     }
@@ -307,6 +307,19 @@ def decode_session_token(token: str) -> Optional[Dict[str, Any]]:
         if payload.get("exp", 0) < int(time.time()):
             return None
             
+        # Verify session is still valid in SQLite DB
+        jti = payload.get("jti")
+        if not jti:
+            return None
+        with db_cursor() as cursor:
+            cursor.execute("SELECT expires_at FROM sessions WHERE session_id = ?", (jti,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            expires_dt = datetime.datetime.fromisoformat(row[0])
+            if datetime.datetime.utcnow() > expires_dt:
+                return None
+
         return payload
     except Exception:
         return None
@@ -320,7 +333,7 @@ def create_session(username: str, ttl_seconds: int, user_agent: str = "") -> str
             "INSERT INTO sessions (session_id, username, expires_at, created_at, user_agent) VALUES (?, ?, ?, ?, ?)",
             (session_id, username, expires, datetime.datetime.utcnow().isoformat(), user_agent),
         )
-    token = issue_session_token(username, ttl_seconds)
+    token = issue_session_token(username, ttl_seconds, session_id)
     return token
 
 
@@ -800,7 +813,20 @@ def logout(response: Response, session_id: Optional[str] = Cookie(None)):
         payload = decode_session_token(session_id)
         if payload:
             write_audit(payload["sub"], "logout")
-    response.delete_cookie("session_id", path="/", httponly=True)
+            jti = payload.get("jti")
+            if jti:
+                try:
+                    with db_cursor() as cursor:
+                        cursor.execute("DELETE FROM sessions WHERE session_id = ?", (jti,))
+                except Exception as e:
+                    logger.warning(f"Failed to delete session {jti} on logout: {e}")
+    response.delete_cookie(
+        "session_id",
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=settings.COOKIE_SECURE,
+    )
     return {"status": "ok"}
 
 
@@ -989,6 +1015,12 @@ def chat(req: ChatRequest, request: Request, session_id: Optional[str] = Cookie(
             "thread_id": req.thread_id,
             "username": username,
             "language": req.language or "auto",
+        },
+        "metadata": {
+            "username": username,
+            "thread_id": req.thread_id,
+            "language": req.language or "auto",
+            "interface": "web"
         }
     }
     try:
@@ -1030,6 +1062,12 @@ def chat_stream(req: ChatRequest, request: Request, session_id: Optional[str] = 
             "thread_id": req.thread_id,
             "username": username,
             "language": req.language or "auto",
+        },
+        "metadata": {
+            "username": username,
+            "thread_id": req.thread_id,
+            "language": req.language or "auto",
+            "interface": "web"
         }
     }
 
@@ -1419,6 +1457,15 @@ def startup_validation():
         logger.error("Startup failure: SQLITE_DB_PATH must not be empty.")
         raise ValueError("SQLITE_DB_PATH must be configured.")
     init_metadata_db()
+
+    # Log LangSmith Tracing Status
+    if settings.LANGCHAIN_TRACING_V2.lower() == "true":
+        if settings.LANGCHAIN_API_KEY:
+            logger.info(f"LangSmith tracing enabled (Project: {settings.LANGCHAIN_PROJECT})")
+        else:
+            logger.warning("LANGCHAIN_TRACING_V2 is set to 'true', but LANGCHAIN_API_KEY is not configured.")
+    else:
+        logger.info("LangSmith tracing is disabled.")
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
