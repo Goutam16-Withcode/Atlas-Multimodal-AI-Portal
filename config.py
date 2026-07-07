@@ -55,6 +55,17 @@ class Settings:
     # Security
     COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 
+    # MCP (Model Context Protocol)
+    # Set MCP_ENABLED=true and provide MCP_SERVERS_JSON (or individual
+    # MCP_SERVER_<NAME>_URL / MCP_SERVER_<NAME>_COMMAND env vars) to
+    # connect the chatbot to external MCP tool servers.
+    MCP_ENABLED: str = os.getenv("MCP_ENABLED", "false")
+    MCP_TIMEOUT: int = int(os.getenv("MCP_TIMEOUT", "30"))
+    MCP_SERVERS_JSON: str = os.getenv("MCP_SERVERS_JSON", "")
+    # Expose Atlas tools as MCP server
+    MCP_SERVER_HOST: str = os.getenv("MCP_SERVER_HOST", "127.0.0.1")
+    MCP_SERVER_PORT: int = int(os.getenv("MCP_SERVER_PORT", "9000"))
+
     @property
     def groq_api_keys(self) -> list:
         keys = []

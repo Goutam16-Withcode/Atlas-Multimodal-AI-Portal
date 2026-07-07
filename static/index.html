@@ -640,6 +640,150 @@
     display: block;
   }
 
+  /* ================= MCP INTEGRATIONS PANEL ================= */
+  .mcp-modal-overlay{
+    position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(40,34,26,0.45);
+    backdrop-filter:blur(6px);z-index:200;display:flex;align-items:center;justify-content:center;
+    opacity:0;visibility:hidden;transition:all .25s ease;
+  }
+  .mcp-modal-overlay.active{opacity:1;visibility:visible;}
+  .mcp-modal{
+    background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-lg);
+    width:92%;max-width:900px;height:86vh;display:flex;flex-direction:column;
+    box-shadow:0 32px 80px rgba(40,34,26,0.28);transform:scale(.95);transition:transform .25s ease;
+    overflow:hidden;
+  }
+  .mcp-modal-overlay.active .mcp-modal{transform:scale(1);}
+  .mcp-modal-header{
+    padding:20px 24px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;
+    justify-content:space-between;background:var(--bg-panel);flex-shrink:0;
+  }
+  .mcp-modal-title{display:flex;align-items:center;gap:10px;}
+  .mcp-modal-title h2{font-family:var(--font-display);font-size:1.15rem;font-weight:600;}
+  .mcp-title-badge{
+    background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.68rem;
+    font-weight:700;padding:2px 8px;border-radius:99px;letter-spacing:.04em;
+  }
+  .mcp-modal-tabs{
+    display:flex;gap:4px;padding:0 24px;border-bottom:1px solid var(--border-color);background:var(--bg-panel);flex-shrink:0;
+  }
+  .mcp-tab{
+    padding:10px 16px;background:transparent;border:none;color:var(--text-muted);font-size:.84rem;
+    font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s ease;
+    font-family:var(--font-body);margin-bottom:-1px;
+  }
+  .mcp-tab.active{color:var(--accent-primary);border-bottom-color:var(--accent-primary);}
+  .mcp-tab-panel{display:none;flex:1;overflow:hidden;flex-direction:column;}
+  .mcp-tab-panel.active{display:flex;}
+  /* Registry tab */
+  .mcp-registry-layout{display:flex;flex:1;overflow:hidden;}
+  .mcp-category-sidebar{
+    width:160px;flex-shrink:0;border-right:1px solid var(--border-color);padding:14px 10px;
+    display:flex;flex-direction:column;gap:4px;overflow-y:auto;
+  }
+  .mcp-cat-btn{
+    padding:8px 12px;background:transparent;border:1px solid transparent;color:var(--text-muted);
+    border-radius:var(--radius-md);cursor:pointer;font-size:.8rem;font-weight:500;text-align:left;
+    transition:all .15s ease;font-family:var(--font-body);
+  }
+  .mcp-cat-btn:hover{background:rgba(31,27,22,0.03);color:var(--text-main);}
+  .mcp-cat-btn.active{
+    background:rgba(99,102,241,0.1);color:#6366f1;border-color:rgba(99,102,241,0.25);
+  }
+  .mcp-server-grid{
+    flex:1;overflow-y:auto;padding:16px;display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;align-content:start;
+  }
+  .mcp-server-card{
+    background:var(--bg-main);border:1px solid var(--border-color);border-radius:var(--radius-md);
+    padding:16px;display:flex;flex-direction:column;gap:10px;transition:all .2s ease;position:relative;
+  }
+  .mcp-server-card:hover{border-color:rgba(99,102,241,0.35);box-shadow:0 8px 24px rgba(99,102,241,0.08);}
+  .mcp-server-card.connected{border-color:rgba(61,122,85,0.4);background:rgba(61,122,85,0.04);}
+  .mcp-card-top{display:flex;align-items:flex-start;gap:10px;}
+  .mcp-card-icon{font-size:1.5rem;line-height:1;flex-shrink:0;}
+  .mcp-card-meta{flex:1;min-width:0;}
+  .mcp-card-name{font-size:.88rem;font-weight:600;color:var(--text-main);margin-bottom:2px;}
+  .mcp-card-category{font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;}
+  .mcp-card-desc{font-size:.78rem;color:var(--text-muted);line-height:1.45;flex:1;}
+  .mcp-card-auth{
+    font-size:.7rem;color:var(--warning);background:rgba(156,107,18,0.08);
+    border:1px solid rgba(156,107,18,0.18);border-radius:6px;padding:4px 8px;
+    display:flex;align-items:center;gap:4px;
+  }
+  .mcp-card-auth.no-auth{color:var(--success);background:rgba(61,122,85,0.08);border-color:rgba(61,122,85,0.18);}
+  .mcp-card-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .mcp-connected-badge{
+    font-size:.7rem;font-weight:600;color:var(--success);display:flex;align-items:center;gap:4px;
+  }
+  .btn-mcp-connect{
+    padding:6px 14px;border-radius:var(--radius-sm);font-size:.78rem;font-weight:600;
+    cursor:pointer;border:none;transition:all .2s ease;font-family:var(--font-body);
+    background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;
+  }
+  .btn-mcp-connect:hover{opacity:.9;transform:translateY(-1px);}
+  .btn-mcp-connect.disconnect{background:transparent;border:1px solid rgba(178,59,46,0.35);color:var(--danger);}
+  .btn-mcp-connect.disconnect:hover{background:rgba(178,59,46,0.08);}
+  .btn-mcp-connect:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+  /* Params form */
+  .mcp-params-form{margin-top:6px;display:flex;flex-direction:column;gap:6px;}
+  .mcp-param-input{
+    background:var(--bg-panel);border:1px solid var(--border-color);border-radius:6px;
+    color:var(--text-main);padding:5px 9px;font-size:.76rem;outline:none;
+    font-family:var(--font-body);width:100%;transition:border-color .2s;
+  }
+  .mcp-param-input:focus{border-color:#6366f1;}
+  /* Active tab */
+  .mcp-active-list{padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;}
+  .mcp-active-card{
+    background:var(--bg-main);border:1px solid rgba(61,122,85,0.3);border-radius:var(--radius-md);
+    padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  }
+  .mcp-active-info{display:flex;align-items:center;gap:12px;min-width:0;}
+  .mcp-active-dot{width:8px;height:8px;border-radius:50%;background:var(--success);flex-shrink:0;animation:mcpPulse 2s infinite;}
+  @keyframes mcpPulse{0%,100%{box-shadow:0 0 0 0 rgba(61,122,85,0.4);}50%{box-shadow:0 0 0 5px rgba(61,122,85,0);}}
+  .mcp-active-name{font-size:.9rem;font-weight:600;color:var(--text-main);}
+  .mcp-active-transport{font-size:.75rem;color:var(--text-muted);}
+  .mcp-tools-badge{
+    font-size:.72rem;background:rgba(99,102,241,0.1);color:#6366f1;border:1px solid rgba(99,102,241,0.2);
+    border-radius:99px;padding:2px 10px;font-weight:600;white-space:nowrap;
+  }
+  .mcp-status-bar{
+    padding:10px 24px;border-top:1px solid var(--border-color);background:rgba(31,27,22,0.02);
+    display:flex;align-items:center;justify-content:space-between;font-size:.78rem;color:var(--text-muted);
+    flex-shrink:0;
+  }
+  .mcp-status-indicator{display:flex;align-items:center;gap:6px;}
+  .mcp-dot{width:7px;height:7px;border-radius:50%;background:rgba(31,27,22,0.2);}
+  .mcp-dot.on{background:var(--success);}
+  .btn-mcp-sidebar{
+    padding:10px;border-radius:var(--radius-md);cursor:pointer;display:flex;align-items:center;
+    justify-content:center;transition:all .2s ease;position:relative;
+    background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);color:#6366f1;
+  }
+  .btn-mcp-sidebar:hover{background:rgba(99,102,241,0.15);border-color:rgba(99,102,241,0.4);}
+  .mcp-sidebar-badge{
+    position:absolute;top:-4px;right:-4px;background:#6366f1;color:#fff;
+    font-size:.6rem;font-weight:700;border-radius:99px;min-width:16px;height:16px;
+    display:flex;align-items:center;justify-content:center;padding:0 3px;
+    border:2px solid var(--bg-sidebar);display:none;
+  }
+  .mcp-sidebar-badge.visible{display:flex;}
+  .mcp-empty-state{
+    text-align:center;padding:40px 20px;color:var(--text-muted);font-size:.88rem;
+    display:flex;flex-direction:column;align-items:center;gap:12px;
+  }
+  .mcp-empty-icon{font-size:2.5rem;}
+  .mcp-search-bar{
+    padding:12px 16px;border-bottom:1px solid var(--border-color);flex-shrink:0;
+  }
+  .mcp-search-input{
+    width:100%;background:rgba(31,27,22,0.03);border:1px solid var(--border-color);
+    border-radius:var(--radius-md);padding:8px 12px;font-size:.84rem;outline:none;
+    font-family:var(--font-body);transition:all .2s;color:var(--text-main);
+  }
+  .mcp-search-input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,0.12);}
+
 </style>
 </head>
 <body>
@@ -738,6 +882,10 @@
       </button>
       <button class="btn-prompt-lib" id="btn-toggle-trash" title="Show deleted chats" style="background:transparent; border-color:var(--border-color); color:var(--text-muted);">
         <i data-lucide="trash-2" style="width:16px;"></i>
+      </button>
+      <button class="btn-mcp-sidebar" id="btn-open-mcp" title="MCP Integrations — connect Google Drive, GitHub, Slack & more">
+        <i data-lucide="plug" style="width:16px;"></i>
+        <span class="mcp-sidebar-badge" id="mcp-sidebar-badge">0</span>
       </button>
     </div>
 
@@ -2644,5 +2792,453 @@
 
   document.addEventListener('DOMContentLoaded', init);
 </script>
+
+<!-- ================= MCP INTEGRATIONS MODAL ================= -->
+<div class="mcp-modal-overlay" id="mcp-modal-overlay">
+  <div class="mcp-modal" role="dialog" aria-label="MCP Integrations">
+
+    <!-- Header -->
+    <div class="mcp-modal-header">
+      <div class="mcp-modal-title">
+        <i data-lucide="plug" style="width:20px;height:20px;color:#6366f1;"></i>
+        <h2>MCP Integrations</h2>
+        <span class="mcp-title-badge">MARKETPLACE</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="mcp-status-indicator">
+          <div class="mcp-dot" id="mcp-dot"></div>
+          <span id="mcp-status-text" style="font-size:.78rem;color:var(--text-muted);">Loading…</span>
+        </div>
+        <button style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;padding:6px;border-radius:6px;" id="btn-close-mcp" title="Close">
+          <i data-lucide="x" style="width:18px;height:18px;"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mcp-modal-tabs">
+      <button class="mcp-tab active" data-tab="registry">🔌 Marketplace</button>
+      <button class="mcp-tab" data-tab="active">✅ Connected <span id="mcp-active-count-tab" style="background:rgba(61,122,85,0.15);color:var(--success);border-radius:99px;padding:1px 7px;font-size:.7rem;margin-left:4px;">0</span></button>
+      <button class="mcp-tab" data-tab="tools">🛠️ Tools <span id="mcp-tools-count-tab" style="background:rgba(99,102,241,0.12);color:#6366f1;border-radius:99px;padding:1px 7px;font-size:.7rem;margin-left:4px;">0</span></button>
+    </div>
+
+    <!-- Registry tab -->
+    <div class="mcp-tab-panel active" id="mcp-panel-registry">
+      <div class="mcp-search-bar">
+        <input class="mcp-search-input" id="mcp-search" placeholder="Search integrations (GitHub, Drive, Slack…)" autocomplete="off">
+      </div>
+      <div class="mcp-registry-layout">
+        <div class="mcp-category-sidebar" id="mcp-category-sidebar">
+          <button class="mcp-cat-btn active" data-cat="all">All</button>
+        </div>
+        <div class="mcp-server-grid" id="mcp-server-grid">
+          <div class="mcp-empty-state"><div class="mcp-empty-icon">⏳</div><span>Loading marketplace…</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active servers tab -->
+    <div class="mcp-tab-panel" id="mcp-panel-active">
+      <div style="padding:16px 24px 0;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:.82rem;color:var(--text-muted);">Currently connected MCP servers</span>
+        <button id="btn-mcp-refresh" style="background:transparent;border:1px solid var(--border-color);color:var(--text-muted);padding:5px 12px;border-radius:var(--radius-sm);font-size:.78rem;cursor:pointer;font-family:var(--font-body);display:flex;align-items:center;gap:6px;">
+          <i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Refresh tools
+        </button>
+      </div>
+      <div class="mcp-active-list" id="mcp-active-list">
+        <div class="mcp-empty-state"><div class="mcp-empty-icon">🔌</div><span>No servers connected yet. Browse the Marketplace tab to get started.</span></div>
+      </div>
+    </div>
+
+    <!-- Tools tab -->
+    <div class="mcp-tab-panel" id="mcp-panel-tools">
+      <div style="padding:16px 24px 0;font-size:.82rem;color:var(--text-muted);">All tools available to the AI from connected MCP servers</div>
+      <div class="mcp-active-list" id="mcp-tools-list" style="flex-direction:row;flex-wrap:wrap;gap:8px;align-content:start;">
+        <div class="mcp-empty-state" style="width:100%;"><div class="mcp-empty-icon">🛠️</div><span>No MCP tools loaded yet.</span></div>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="mcp-status-bar">
+      <div class="mcp-status-indicator">
+        <div class="mcp-dot" id="mcp-dot-bar"></div>
+        <span id="mcp-bar-text">MCP disabled — set MCP_ENABLED=true in .env to persist connections across restarts</span>
+      </div>
+      <span id="mcp-tool-total" style="color:#6366f1;font-weight:600;">0 MCP tools</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+// MCP Integrations — Frontend controller
+// =====================================================================
+(function() {
+  // State
+  let _registry = [];          // full registry list
+  let _activeServers = {};     // {server_id: definition}
+  let _mcpTools = [];          // [{name, description}]
+  let _activeCategory = 'all';
+  let _searchQuery = '';
+
+  // DOM refs (set after DOMContentLoaded in init below)
+  let overlay, closeBtn, grid, catSidebar, searchInput,
+      activeList, toolsList, statusDot, statusDotBar, statusText, barText,
+      toolTotal, activeCountTab, toolsCountTab, sidebarBadge, refreshBtn;
+
+  function initMCP() {
+    overlay        = document.getElementById('mcp-modal-overlay');
+    closeBtn       = document.getElementById('btn-close-mcp');
+    grid           = document.getElementById('mcp-server-grid');
+    catSidebar     = document.getElementById('mcp-category-sidebar');
+    searchInput    = document.getElementById('mcp-search');
+    activeList     = document.getElementById('mcp-active-list');
+    toolsList      = document.getElementById('mcp-tools-list');
+    statusDot      = document.getElementById('mcp-dot');
+    statusDotBar   = document.getElementById('mcp-dot-bar');
+    statusText     = document.getElementById('mcp-status-text');
+    barText        = document.getElementById('mcp-bar-text');
+    toolTotal      = document.getElementById('mcp-tool-total');
+    activeCountTab = document.getElementById('mcp-active-count-tab');
+    toolsCountTab  = document.getElementById('mcp-tools-count-tab');
+    sidebarBadge   = document.getElementById('mcp-sidebar-badge');
+    refreshBtn     = document.getElementById('btn-mcp-refresh');
+
+    // Open button
+    const openBtn = document.getElementById('btn-open-mcp');
+    if (openBtn) openBtn.addEventListener('click', openMCP);
+
+    // Close
+    if (closeBtn) closeBtn.addEventListener('click', closeMCP);
+    if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) closeMCP(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay && overlay.classList.contains('active')) closeMCP(); });
+
+    // Tabs
+    document.querySelectorAll('.mcp-tab').forEach(tab => {
+      tab.addEventListener('click', () => switchMCPTab(tab.dataset.tab));
+    });
+
+    // Search
+    if (searchInput) searchInput.addEventListener('input', e => {
+      _searchQuery = e.target.value.toLowerCase();
+      renderGrid();
+    });
+
+    // Refresh
+    if (refreshBtn) refreshBtn.addEventListener('click', () => mcpRefresh());
+
+    // Load initial data (non-blocking, no auth needed for registry)
+    loadRegistry();
+    // Status needs auth — load lazily when modal opens
+  }
+
+  function openMCP() {
+    if (overlay) overlay.classList.add('active');
+    loadRegistry();
+    loadActiveAndTools();
+  }
+
+  function closeMCP() {
+    if (overlay) overlay.classList.remove('active');
+  }
+
+  function switchMCPTab(tab) {
+    document.querySelectorAll('.mcp-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.querySelectorAll('.mcp-tab-panel').forEach(p => {
+      p.classList.toggle('active', p.id === `mcp-panel-${tab}`);
+    });
+    if (tab === 'active' || tab === 'tools') loadActiveAndTools();
+  }
+
+  // ----------------------------------------------------------------
+  // API calls
+  // ----------------------------------------------------------------
+  async function loadRegistry() {
+    try {
+      const res = await fetch('/mcp/registry');
+      const data = await res.json();
+      _registry = data.servers || [];
+      renderCategories(data.categories || []);
+      renderGrid();
+    } catch (e) {
+      if (grid) grid.innerHTML = `<div class="mcp-empty-state"><div class="mcp-empty-icon">⚠️</div><span>Failed to load registry: ${e.message}</span></div>`;
+    }
+  }
+
+  async function loadActiveAndTools() {
+    try {
+      // Parallel fetch of status, active servers, and tools
+      const [statusRes, activeRes, toolsRes] = await Promise.allSettled([
+        fetch('/mcp/status'),
+        fetch('/mcp/active'),
+        fetch('/mcp/tools'),
+      ]);
+
+      if (statusRes.status === 'fulfilled' && statusRes.value.ok) {
+        const s = await statusRes.value.json();
+        updateStatusBar(s);
+      }
+
+      if (activeRes.status === 'fulfilled' && activeRes.value.ok) {
+        const a = await activeRes.value.json();
+        _activeServers = {};
+        (a.servers || []).forEach(srv => { _activeServers[srv.server_id] = srv; });
+        renderActiveList();
+        updateCountBadges();
+        renderGrid(); // refresh cards to show connected state
+      }
+
+      if (toolsRes.status === 'fulfilled' && toolsRes.value.ok) {
+        const t = await toolsRes.value.json();
+        _mcpTools = t.tools || [];
+        renderToolsList();
+        updateCountBadges();
+      }
+    } catch (e) {
+      console.warn('MCP status load error:', e);
+    }
+  }
+
+  async function connectServer(serverId, params) {
+    const btn = document.getElementById(`mcp-btn-${serverId}`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Connecting…'; }
+    try {
+      const res = await fetch('/mcp/connect', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ server_id: serverId, params }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.error?.message || 'Connection failed');
+
+      showToast(`✅ Connected to ${serverId} — ${data.mcp_tools_loaded} MCP tool(s) loaded`, 'success');
+      await loadActiveAndTools();
+    } catch (e) {
+      showToast(`❌ Connect failed: ${e.message}`, 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Connect'; }
+    }
+  }
+
+  async function disconnectServer(serverId) {
+    const btn = document.getElementById(`mcp-btn-${serverId}`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Disconnecting…'; }
+    try {
+      const res = await fetch('/mcp/disconnect', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ server_id: serverId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Disconnect failed');
+      showToast(`🔌 Disconnected ${serverId}`, 'info');
+      await loadActiveAndTools();
+    } catch (e) {
+      showToast(`❌ Disconnect failed: ${e.message}`, 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Disconnect'; }
+    }
+  }
+
+  async function mcpRefresh() {
+    if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.querySelector('span') && (refreshBtn.querySelector('span').textContent = ' Refreshing…'); }
+    try {
+      const res = await fetch('/mcp/refresh', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Refresh failed');
+      showToast(`🔄 Refreshed — ${data.total_tools} tools active`, 'success');
+      await loadActiveAndTools();
+    } catch (e) {
+      showToast(`❌ Refresh failed: ${e.message}`, 'error');
+    } finally {
+      if (refreshBtn) refreshBtn.disabled = false;
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // Renderers
+  // ----------------------------------------------------------------
+  function renderCategories(categories) {
+    if (!catSidebar) return;
+    catSidebar.innerHTML = '<button class="mcp-cat-btn active" data-cat="all">All</button>';
+    categories.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'mcp-cat-btn';
+      btn.dataset.cat = cat;
+      btn.textContent = cat;
+      catSidebar.appendChild(btn);
+    });
+    catSidebar.querySelectorAll('.mcp-cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        catSidebar.querySelectorAll('.mcp-cat-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _activeCategory = btn.dataset.cat;
+        renderGrid();
+      });
+    });
+  }
+
+  function renderGrid() {
+    if (!grid) return;
+    let filtered = _registry;
+    if (_activeCategory !== 'all') filtered = filtered.filter(s => s.category === _activeCategory);
+    if (_searchQuery) filtered = filtered.filter(s =>
+      s.name.toLowerCase().includes(_searchQuery) ||
+      s.description.toLowerCase().includes(_searchQuery) ||
+      s.category.toLowerCase().includes(_searchQuery)
+    );
+
+    if (!filtered.length) {
+      grid.innerHTML = `<div class="mcp-empty-state"><div class="mcp-empty-icon">🔍</div><span>No integrations match your search.</span></div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(srv => renderServerCard(srv)).join('');
+
+    // Wire buttons
+    filtered.forEach(srv => {
+      const btn = document.getElementById(`mcp-btn-${srv.id}`);
+      if (!btn) return;
+      const isConn = !!_activeServers[srv.id];
+      if (isConn) {
+        btn.addEventListener('click', () => disconnectServer(srv.id));
+      } else {
+        btn.addEventListener('click', () => {
+          const params = {};
+          (srv.config_params || []).forEach(p => {
+            const el = document.getElementById(`mcp-param-${srv.id}-${p.key}`);
+            if (el) params[p.key] = el.value.trim();
+          });
+          connectServer(srv.id, params);
+        });
+      }
+    });
+  }
+
+  function renderServerCard(srv) {
+    const isConn = !!_activeServers[srv.id];
+    const hasAuth = srv.auth_env && srv.auth_env.length > 0;
+    const hasParams = srv.config_params && srv.config_params.length > 0;
+
+    const authHtml = hasAuth
+      ? `<div class="mcp-card-auth">🔑 Needs: ${srv.auth_env.slice(0,2).join(', ')}${srv.auth_env.length>2?' +'+( srv.auth_env.length-2)+' more':''}</div>`
+      : `<div class="mcp-card-auth no-auth">✅ No auth required</div>`;
+
+    const paramsHtml = (!isConn && hasParams)
+      ? `<div class="mcp-params-form">${srv.config_params.map(p =>
+          `<input class="mcp-param-input" id="mcp-param-${srv.id}-${p.key}"
+            placeholder="${p.label}${p.required?' *':''}: ${p.placeholder || ''}"
+            type="${p.secret ? 'password' : 'text'}">`
+        ).join('')}</div>`
+      : '';
+
+    return `
+    <div class="mcp-server-card${isConn?' connected':''}" id="mcp-card-${srv.id}">
+      <div class="mcp-card-top">
+        <div class="mcp-card-icon">${srv.icon || '🔌'}</div>
+        <div class="mcp-card-meta">
+          <div class="mcp-card-name">${srv.name}</div>
+          <div class="mcp-card-category">${srv.category}</div>
+        </div>
+      </div>
+      <div class="mcp-card-desc">${srv.description}</div>
+      ${authHtml}
+      ${paramsHtml}
+      <div class="mcp-card-footer">
+        ${isConn
+          ? `<div class="mcp-connected-badge">● Connected</div>`
+          : `<a href="${srv.docs_url}" target="_blank" style="font-size:.72rem;color:var(--text-muted);text-decoration:none;" title="View docs">Docs ↗</a>`
+        }
+        <button class="btn-mcp-connect${isConn?' disconnect':''}" id="mcp-btn-${srv.id}">
+          ${isConn ? 'Disconnect' : 'Connect'}
+        </button>
+      </div>
+    </div>`;
+  }
+
+  function renderActiveList() {
+    if (!activeList) return;
+    const servers = Object.entries(_activeServers);
+    if (!servers.length) {
+      activeList.innerHTML = `<div class="mcp-empty-state"><div class="mcp-empty-icon">🔌</div><span>No servers connected. Browse the Marketplace tab.</span></div>`;
+      return;
+    }
+    activeList.innerHTML = servers.map(([id, def]) => `
+    <div class="mcp-active-card">
+      <div class="mcp-active-info">
+        <div class="mcp-active-dot"></div>
+        <div>
+          <div class="mcp-active-name">${id}</div>
+          <div class="mcp-active-transport">${def.transport || 'unknown'} transport${def.url ? ' · '+def.url : ''}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="mcp-tools-badge">${_mcpTools.length} tools</span>
+        <button onclick="window._mcpDisconnect('${id}')" class="btn-mcp-connect disconnect" style="padding:4px 10px;">Disconnect</button>
+      </div>
+    </div>`).join('');
+
+    // Expose disconnect to inline handler
+    window._mcpDisconnect = (id) => disconnectServer(id);
+  }
+
+  function renderToolsList() {
+    if (!toolsList) return;
+    if (!_mcpTools.length) {
+      toolsList.innerHTML = `<div class="mcp-empty-state" style="width:100%;"><div class="mcp-empty-icon">🛠️</div><span>No MCP tools loaded yet.</span></div>`;
+      return;
+    }
+    toolsList.innerHTML = _mcpTools.map(t => `
+    <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:8px;padding:8px 12px;font-size:.78rem;max-width:280px;">
+      <div style="font-weight:600;color:#6366f1;margin-bottom:2px;">${t.name}</div>
+      <div style="color:var(--text-muted);line-height:1.35;font-size:.72rem;">${(t.description||'').slice(0,90)}${(t.description||'').length>90?'…':''}</div>
+    </div>`).join('');
+  }
+
+  function updateStatusBar(status) {
+    const on = status.servers_active > 0 || status.enabled;
+    if (statusDot) statusDot.classList.toggle('on', on);
+    if (statusDotBar) statusDotBar.classList.toggle('on', on);
+    if (statusText) statusText.textContent = on
+      ? `${status.servers_active} server(s) active`
+      : 'No servers connected';
+    if (barText) barText.textContent = status.enabled
+      ? `MCP enabled · ${status.servers_active} server(s) · set MCP_SERVERS_JSON in .env for persistence`
+      : 'MCP disabled — set MCP_ENABLED=true in .env to persist connections across restarts';
+    if (toolTotal) toolTotal.textContent = `${status.tools_cached} MCP tool(s)`;
+  }
+
+  function updateCountBadges() {
+    const activeCount = Object.keys(_activeServers).length;
+    const toolCount = _mcpTools.length;
+    if (activeCountTab) activeCountTab.textContent = activeCount;
+    if (toolsCountTab) toolsCountTab.textContent = toolCount;
+    if (sidebarBadge) {
+      sidebarBadge.textContent = activeCount;
+      sidebarBadge.classList.toggle('visible', activeCount > 0);
+    }
+    if (toolTotal) toolTotal.textContent = `${toolCount} MCP tool(s)`;
+  }
+
+  function showToast(msg, type='info') {
+    const t = document.createElement('div');
+    const colors = {success:'var(--success)',error:'var(--danger)',info:'#6366f1'};
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;background:var(--bg-panel);border:1px solid var(--border-color);
+      border-left:4px solid ${colors[type]||'#6366f1'};border-radius:10px;padding:12px 18px;font-size:.84rem;
+      color:var(--text-main);z-index:9999;box-shadow:0 12px 32px rgba(40,34,26,0.15);
+      max-width:380px;animation:fadeInUp .3s ease;`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 4000);
+  }
+
+  // Hook into DOMContentLoaded (already fired if late, but safe)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMCP);
+  } else {
+    initMCP();
+  }
+
+})();
+</script>
+
 </body>
 </html>

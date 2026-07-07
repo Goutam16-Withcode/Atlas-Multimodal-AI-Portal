@@ -8,7 +8,13 @@ Design mirrors a real production support workflow:
   4. tool_node           -> executes any tool calls the agent requested
   5. escalation_check    -> flags safety/urgent keywords for human handoff
   6. handle_error        -> catches LLM/tool failures, retries with backoff
+
+MCP integration:
+  - External MCP servers are discovered at startup via mcp_config.get_mcp_tools()
+  - Their tools are merged with ALL_TOOLS so the LLM can invoke them seamlessly
+  - Set MCP_ENABLED=true in .env and define MCP_SERVERS_JSON to activate
 """
+import asyncio
 import time
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
@@ -19,10 +25,54 @@ from state import ChatState
 from tools import ALL_TOOLS
 from config import settings
 from logger import get_logger
+from mcp_config import get_all_tools, MCP_ENABLED
 
 logger = get_logger(__name__)
 
 _key_index = 0
+
+# ---------------------------------------------------------------------------
+# Merged tool list: native ALL_TOOLS + MCP tools (populated at startup)
+# ---------------------------------------------------------------------------
+_active_tools: list = list(ALL_TOOLS)  # starts with native tools only
+
+
+def _run_async_init():
+    """Synchronously initialise MCP tools at import time using a dedicated event loop.
+
+    This is safe to call at module import because it runs before any request
+    is served. The resulting tool list is stored in _active_tools.
+    """
+    global _active_tools
+    if not MCP_ENABLED:
+        return
+    try:
+        loop = asyncio.new_event_loop()
+        merged = loop.run_until_complete(get_all_tools(ALL_TOOLS))
+        loop.close()
+        _active_tools = merged
+        logger.info(f"MCP integration active — total tools available: {len(_active_tools)} "
+                    f"(native: {len(ALL_TOOLS)}, MCP: {len(_active_tools) - len(ALL_TOOLS)})")
+    except Exception as exc:
+        logger.warning(f"MCP tool initialisation failed, using native tools only: {exc}")
+
+
+_run_async_init()
+
+
+async def refresh_mcp_tools():
+    """Re-fetch MCP tools and rebuild the active tool list + tool_node.
+
+    Call this endpoint handler via POST /mcp/refresh to pick up newly
+    added MCP servers without restarting the process.
+    """
+    global _active_tools, tool_node
+    from mcp_config import get_mcp_tools  # noqa: PLC0415
+    await get_mcp_tools(refresh=True)
+    _active_tools = await get_all_tools(ALL_TOOLS)
+    tool_node = ToolNode(_active_tools)
+    logger.info(f"MCP tools refreshed — total active: {len(_active_tools)}")
+    return _active_tools
 
 
 def get_llm_instance(model_type="primary", bind_tools=True):
@@ -43,11 +93,12 @@ def get_llm_instance(model_type="primary", bind_tools=True):
         api_key=api_key or None,
     )
     if bind_tools:
-        return base_llm.bind_tools(ALL_TOOLS)
+        return base_llm.bind_tools(_active_tools)
     return base_llm
 
 
-tool_node = ToolNode(ALL_TOOLS)
+# ToolNode is rebuilt after MCP init so it knows about all tools
+tool_node = ToolNode(_active_tools)
 
 SYSTEM_PROMPT = """You are Atlas, an operations assistant supporting plant/industrial teams as well as general technical and knowledge work. You have access to tools for live equipment data, calculations, a knowledge base, image generation, video generation, support ticketing, real-time web search, stock market price lookups, weather forecasts, read-only SQL database querying, simulated email sending, calendar scheduling, task management, safe Python code execution, sending Slack messages, fetching GitHub issues/PRs, and comparing document similarity. Use them — never guess.
 

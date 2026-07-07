@@ -11,3 +11,6 @@ pypdf
 python-pptx>=0.6.23
 reportlab>=4.0.0
 langsmith
+# MCP (Model Context Protocol) support
+langchain-mcp-adapters>=0.1.0
+fastmcp>=2.0.0

@@ -52,6 +52,7 @@ from asset_export import (
     parse_presentation_markup, parse_poster_markup,
     build_pptx, build_poster_pdf,
 )
+import mcp_config
 
 logger = get_logger("api")
 
@@ -1409,6 +1410,208 @@ def reset(thread_id: str, session_id: Optional[str] = Cookie(None)):
 
 
 # --------------------------------------------------------------------------- #
+# MCP (Model Context Protocol) — Marketplace & runtime management endpoints
+# --------------------------------------------------------------------------- #
+
+# ---- Pydantic models for MCP endpoints ----
+
+class MCPConnectRequest(BaseModel):
+    """Connect to a server from the registry or provide a raw definition."""
+    server_id: str = Field(..., description="Registry ID (e.g. 'google_drive') or a custom slug")
+    # For registry servers that have config_params (e.g. filesystem path)
+    params: Optional[Dict[str, str]] = Field(
+        default={},
+        description="Config param values required by the registry entry"
+    )
+    # For fully custom / raw connections (bypasses registry)
+    raw_definition: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Raw MultiServerMCPClient definition (transport, command/url, etc.). "
+                    "Only needed when server_id is not in the registry."
+    )
+
+
+class MCPDisconnectRequest(BaseModel):
+    server_id: str = Field(..., description="The server_id to disconnect")
+
+
+# ---- Registry endpoints (no auth needed to browse) ----
+
+@app.get("/mcp/registry")
+def mcp_registry_list(category: Optional[str] = Query(None)):
+    """Browse all available MCP servers in the registry.
+
+    Optionally filter by category (e.g. 'Productivity', 'Developer', 'Communication').
+    """
+    from mcp_registry import get_registry, list_categories  # noqa: PLC0415
+    entries = get_registry()
+    if category:
+        entries = [e for e in entries if e["category"].lower() == category.lower()]
+    return {
+        "count": len(entries),
+        "categories": list_categories(),
+        "servers": entries,
+    }
+
+
+@app.get("/mcp/registry/{server_id}")
+def mcp_registry_entry(server_id: str):
+    """Get details for a specific MCP server in the registry."""
+    from mcp_registry import get_entry  # noqa: PLC0415
+    entry = get_entry(server_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"Server '{server_id}' not found in registry")
+    # Strip internal fields
+    public = {k: v for k, v in entry.items() if k != "env_passthrough"}
+    return public
+
+
+# ---- Runtime management (auth required) ----
+
+@app.get("/mcp/status")
+async def mcp_status(session_id: Optional[str] = Cookie(None)):
+    """Return the current MCP configuration: active servers, cached tools, settings."""
+    get_current_user(session_id)
+    return mcp_config.get_server_status()
+
+
+@app.get("/mcp/active")
+async def mcp_active_servers(session_id: Optional[str] = Cookie(None)):
+    """List all currently connected MCP servers (env-loaded + runtime-connected)."""
+    get_current_user(session_id)
+    connected = mcp_config.get_connected_servers()
+    return {
+        "count": len(connected),
+        "servers": [
+            {"server_id": sid, **defn}
+            for sid, defn in connected.items()
+        ],
+    }
+
+
+@app.get("/mcp/tools")
+async def mcp_tools_list(session_id: Optional[str] = Cookie(None)):
+    """Return the names and descriptions of all currently loaded MCP tools."""
+    get_current_user(session_id)
+    tools = await mcp_config.get_mcp_tools()
+    return {
+        "count": len(tools),
+        "tools": [
+            {"name": t.name, "description": t.description}
+            for t in tools
+        ],
+    }
+
+
+@app.post("/mcp/connect")
+async def mcp_connect(
+    req: MCPConnectRequest,
+    request: Request,
+    session_id: Optional[str] = Cookie(None),
+):
+    """Dynamically connect a new MCP server at runtime.
+
+    - If `server_id` matches a registry entry and the entry uses stdio/http
+      transports, supply required `params` (config_params values from the registry).
+    - For fully custom servers, pass a `raw_definition` dict directly.
+    - Changes take effect immediately — no restart required.
+
+    After connecting, the agent's tool list is automatically refreshed.
+    """
+    username = get_current_user(session_id)
+
+    # Determine the server definition to use
+    if req.raw_definition:
+        definition = req.raw_definition
+    else:
+        from mcp_registry import build_server_definition  # noqa: PLC0415
+        definition = build_server_definition(req.server_id, req.params or {})
+        if definition is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Server ID '{req.server_id}' not found in registry and no "
+                       "raw_definition provided. Supply either a valid registry ID "
+                       "or a raw_definition."
+            )
+
+    try:
+        tools = await mcp_config.connect_server(req.server_id, definition)
+        # Rebuild the agent's tool list
+        from nodes import refresh_mcp_tools  # noqa: PLC0415
+        await refresh_mcp_tools()
+
+        write_audit(username, "mcp_connect", detail=req.server_id, ip=client_ip(request))
+        logger.info(f"User '{username}' connected MCP server '{req.server_id}'")
+
+        return {
+            "status": "connected",
+            "server_id": req.server_id,
+            "mcp_tools_loaded": len(tools),
+            "mcp_tool_names": [t.name for t in tools],
+        }
+    except Exception as exc:
+        logger.error(f"MCP connect failed for '{req.server_id}': {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to connect MCP server '{req.server_id}': {str(exc)}"
+        )
+
+
+@app.post("/mcp/disconnect")
+async def mcp_disconnect(
+    req: MCPDisconnectRequest,
+    request: Request,
+    session_id: Optional[str] = Cookie(None),
+):
+    """Disconnect a currently active MCP server by its server_id.
+
+    Works for both env-loaded and runtime-connected servers.
+    After disconnecting, the agent's tool list is automatically refreshed.
+    """
+    username = get_current_user(session_id)
+
+    try:
+        tools = await mcp_config.disconnect_server(req.server_id)
+        from nodes import refresh_mcp_tools  # noqa: PLC0415
+        await refresh_mcp_tools()
+
+        write_audit(username, "mcp_disconnect", detail=req.server_id, ip=client_ip(request))
+        logger.info(f"User '{username}' disconnected MCP server '{req.server_id}'")
+
+        return {
+            "status": "disconnected",
+            "server_id": req.server_id,
+            "remaining_mcp_tools": len(tools),
+        }
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        logger.error(f"MCP disconnect failed for '{req.server_id}': {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to disconnect MCP server '{req.server_id}': {str(exc)}"
+        )
+
+
+@app.post("/mcp/refresh")
+async def mcp_refresh(session_id: Optional[str] = Cookie(None)):
+    """Force-reload MCP tools from all connected servers.
+
+    Useful after server-side changes (e.g. a new tool was added to a
+    connected MCP server) without reconnecting.
+    """
+    get_current_user(session_id)
+    from nodes import refresh_mcp_tools  # noqa: PLC0415
+    tools = await refresh_mcp_tools()
+    logger.info(f"MCP tools refreshed via API — total: {len(tools)}")
+    return {
+        "status": "refreshed",
+        "total_tools": len(tools),
+        "tool_names": [t.name for t in tools],
+    }
+
+
+# --------------------------------------------------------------------------- #
 # UI & health
 # --------------------------------------------------------------------------- #
 
@@ -1448,7 +1651,7 @@ def readiness():
 # --------------------------------------------------------------------------- #
 
 @app.on_event("startup")
-def startup_validation():
+async def startup_validation():
     # Central validation at startup
     if not settings.GROQ_API_KEY and not settings.groq_api_keys:
         logger.error("Startup failure: GROQ_API_KEY must be configured in settings.")
@@ -1466,6 +1669,18 @@ def startup_validation():
             logger.warning("LANGCHAIN_TRACING_V2 is set to 'true', but LANGCHAIN_API_KEY is not configured.")
     else:
         logger.info("LangSmith tracing is disabled.")
+
+    # Initialize MCP client and pre-fetch tools (async, non-blocking if disabled)
+    if mcp_config.MCP_ENABLED:
+        logger.info("MCP is enabled — pre-fetching tools from configured servers...")
+        try:
+            tools = await mcp_config.get_mcp_tools(refresh=True)
+            logger.info(f"MCP startup: {len(tools)} tool(s) loaded from "
+                        f"{list(mcp_config.SERVER_DEFINITIONS.keys())}")
+        except Exception as exc:
+            logger.warning(f"MCP startup tool fetch failed (will retry on first request): {exc}")
+    else:
+        logger.info("MCP is disabled (set MCP_ENABLED=true in .env to activate).")
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
